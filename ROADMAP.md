@@ -43,13 +43,20 @@ restart recovery use the shared server engine. Both test suites are retained.
 See [the current integration handoff](docs/provider-adapter.md) for the canonical
 configuration and earlier state-format handling.
 
-Current verification: all 56 tests pass on Node 24. The merged server starts on
+Current verification: all 57 tests pass on Node 24. The merged server starts on
 Node 24; the local page and health route return 200, unauthenticated API access
 returns 401 and invalid Vapi metadata returns 400. The organizer credential is
 configured privately and local configuration and storage checks pass. Upstream
 access has not been verified. Location-service access is not configured, and the
 team chose local testing before public HTTPS setup. No staging requests or
 bookings were sent during startup checks.
+
+The repeatable local rehearsal is also complete: `npm run rehearse:local` passes
+five checks across confirmed, declined and lost-response conversations, including
+current status pagination and delivery of all 29 tool events plus three complete
+final call reports to a local backend. Its aggregate report is saved privately to
+`.local/rehearsal-report.json`. These use synthetic data and do not establish live
+provider, geocoder or staging acceptance. See [local rehearsal and setup](docs/local-rehearsal.md).
 
 | Task | Current checkpoint | Remaining acceptance |
 | --- | --- | --- |
@@ -61,8 +68,8 @@ bookings were sent during startup checks.
 | R6 | Future-trip validation and concurrent caller isolation tested | Find the expected seeded staging rides over a phone call |
 | R7 | German summary and conservative transcript consent integrated | German speaker review and real-call dialogue verification |
 | R8 | Confirmed actions, duplicate suppression and restart retries tested | One real stored request after consent, none after refusal |
-| R9 | Tool logging and final-report delivery covered by local tests | Verify complete history in the central staging view |
-| R10 | Combined tests, local Node 24 startup and architecture handoff complete | Live evaluation routes, HTTPS deployment and submission |
+| R9 | Tool logging and final reports verified together in the local rehearsal | Verify complete history in the central staging view |
+| R10 | Combined tests, repeatable rehearsal, local startup and architecture handoff complete | Real location access, live evaluation routes, HTTPS deployment and submission |
 
 The earlier entries below record the initial setup and first implementation
 checkpoints; they do not replace the current merged contract above.

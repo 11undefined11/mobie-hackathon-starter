@@ -13,6 +13,7 @@
     "dev": "node --env-file=.env --watch src/server.js",
     "test": "node --test",
     "check:deployment": "node --env-file-if-exists=.env scripts/check-deployment.js",
+    "rehearse:local": "node scripts/rehearse-local.js",
     "example:search": "node --env-file=.env examples/search.js",
     "prestart": "node scripts/setup.js",
     "predev": "node scripts/setup.js",
