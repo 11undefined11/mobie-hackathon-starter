@@ -46,10 +46,12 @@ configuration and earlier state-format handling.
 Current verification: all 57 tests pass on Node 24. The merged server starts on
 Node 24; the local page and health route return 200, unauthenticated API access
 returns 401 and invalid Vapi metadata returns 400. The organizer credential is
-configured privately and local configuration and storage checks pass. Upstream
-access has not been verified. Location-service access is not configured, and the
-team chose local testing before public HTTPS setup. No staging requests or
-bookings were sent during startup checks.
+configured privately and local configuration and storage checks pass. The
+registered passenger was recognized by staging. Real permanent-geocoding lookups
+resolved Muthgasse 24 and Stephansplatz in Vienna, and a future-dated search using
+those coordinates returned HTTP 200 with zero matching suggestions. No booking
+was submitted. A known future staging ride is needed for positive-match
+acceptance. The team chose local testing before public HTTPS setup.
 
 The repeatable local rehearsal is also complete: `npm run rehearse:local` passes
 five checks across confirmed, declined and lost-response conversations, including
@@ -61,15 +63,15 @@ provider, geocoder or staging acceptance. See [local rehearsal and setup](docs/l
 | Task | Current checkpoint | Remaining acceptance |
 | --- | --- | --- |
 | R1 | Setup repair and Windows regression checks complete | None for local setup |
-| R2 | Organizer credential configured privately; upstream access unverified | Location access, registered passengers, future staging fixtures and approved driver |
+| R2 | Organizer credential, registered passenger lookup and location access verified | Known future staging fixtures, second passenger and approved driver |
 | R3 | Shared tool definitions, ownership and merged contract written | Joint review of the canonical Vapi configuration |
 | R4 | Combined authenticated Vapi tool handler tested locally | Real provider call through public HTTPS |
-| R5 | Candidate lookup and spoken location confirmation integrated | Actual ambiguous Austrian locations and permitted source access |
-| R6 | Future-trip validation and concurrent caller isolation tested | Find the expected seeded staging rides over a phone call |
+| R5 | Real Vienna address lookups verified; spoken location guards integrated | Wider Austrian ambiguity and POI cases, then real phone confirmation |
+| R6 | Real staging search returned 200 with no matches; caller isolation tested locally | Find a known future seeded ride, then repeat over a phone call |
 | R7 | German summary and conservative transcript consent integrated | German speaker review and real-call dialogue verification |
 | R8 | Confirmed actions, duplicate suppression and restart retries tested | One real stored request after consent, none after refusal |
 | R9 | Tool logging and final reports verified together in the local rehearsal | Verify complete history in the central staging view |
-| R10 | Combined tests, repeatable rehearsal, local startup and architecture handoff complete | Real location access, live evaluation routes, HTTPS deployment and submission |
+| R10 | Combined tests, local rehearsal, real address lookup and staging search verified | Positive-match staging fixtures, live evaluation routes, HTTPS deployment and submission |
 
 The earlier entries below record the initial setup and first implementation
 checkpoints; they do not replace the current merged contract above.
