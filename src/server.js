@@ -8,6 +8,7 @@ import { createMapboxClient } from './mapbox.js';
 import { HttpError } from './http.js';
 import { loadConfig } from './config.js';
 import { createBackendCallLog } from './call-log.js';
+import { createVapiToolHandler } from './vapi-tools.js';
 
 const page = readFileSync(new URL('./index.html', import.meta.url));
 const script = readFileSync(new URL('./page.js', import.meta.url));
@@ -39,6 +40,7 @@ export function createServer(config, services = {}) {
   const mobie = services.mobie ?? createMobieClient({ baseUrl: config.baseUrl, secret: config.secret });
   const mapbox = services.mapbox ?? createMapboxClient({ token: config.mapboxToken });
   const calls = services.calls ?? createBackendCallLog({ baseUrl: config.baseUrl, secret: config.secret, apiKey: config.apiKey });
+  const handleVapiTools = services.vapiTools ?? createVapiToolHandler({ mobie, mapbox, calls, statePath: services.vapiStatePath });
 
   const server = httpServer(async (req, res) => {
     res.setHeader('Cache-Control', 'no-store');
@@ -71,6 +73,10 @@ export function createServer(config, services = {}) {
         const report = await readJson(req, 8_388_608);
         if (['end-of-call-report', 'status-update'].includes(report.message?.type)) await calls.recordCall(report);
         return json(200, {});
+      }
+      if (req.method === 'POST' && url.pathname === '/vapi/tools') {
+        const toolCall = await readJson(req, 8_388_608);
+        return json(200, await handleVapiTools(toolCall));
       }
       const log = /^\/api\/calls\/([A-Za-z0-9_-]{1,128})(?:\/tools\/([A-Za-z0-9_-]{1,128}))?$/.exec(url.pathname);
       if (log && req.method === 'PUT') {

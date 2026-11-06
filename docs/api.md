@@ -47,6 +47,7 @@ arbitrary backend URLs and administrative routes are inaccessible.
 | Method | Starter route | Behavior |
 | --- | --- | --- |
 | POST | `/vapi/events` | Accept Vapi end-of-call/status reports; normalize and push to backend; 200 after acceptance |
+| POST | `/vapi/tools` | Accept Vapi function calls; map trusted call metadata and return Vapi tool results |
 | PUT | `/api/calls/{callId}` | Push a normalized call report to `/integrations/voice-log/calls/{callId}`; 204 after persistence |
 | PUT | `/api/calls/{callId}/tools/{toolId}` | Push a normalized external tool event; 204 after persistence |
 
