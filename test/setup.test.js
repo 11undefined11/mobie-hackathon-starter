@@ -13,6 +13,9 @@ test('configuration requires team credentials and rejects production/invalid ori
   const env = { STARTER_API_KEY: key, VOICE_INTEGRATION_SECRET: secret };
   assert.deepEqual(loadConfig(env), { baseUrl: 'https://api-staging.mobie.at', apiKey: key, secret, mapboxToken: '', port: 3000, host: '127.0.0.1' });
   for (const changes of [{ VOICE_INTEGRATION_SECRET: '' }, { VOICE_INTEGRATION_SECRET: 'short' }, { VOICE_INTEGRATION_SECRET: 'x'.repeat(32) + '\nheader' }, { STARTER_API_KEY: 'short' }, { MOBIE_API_URL: 'https://api.mobie.at' }, { MOBIE_API_URL: 'http://staging.example' }, { MOBIE_API_URL: 'https://staging.example/integrations/voice' }, { MOBIE_API_URL: 'https://user:password@staging.example' }, { PORT: '0' }]) assert.throws(() => loadConfig({ ...env, ...changes }));
+  assert.equal(loadConfig({ ...env, VOICE_ALLOW_WEB_CALLS: 'true' }).allowWebCalls, true);
+  assert.equal(loadConfig({ ...env, VOICE_ALLOW_WEB_CALLS: 'false' }).allowWebCalls, false);
+  assert.throws(() => loadConfig({ ...env, VOICE_ALLOW_WEB_CALLS: 'yes' }), /true or false/);
 });
 
 test('setup creates or migrates .env, preserves existing keys and is repeatable', t => {
@@ -30,7 +33,8 @@ test('setup creates or migrates .env, preserves existing keys and is repeatable'
   const fresh = run();
   assert.match(fresh, /^STARTER_API_KEY=[A-Za-z0-9_-]{43}$/m);
   assert.match(fresh, /^VOICE_INTEGRATION_SECRET=$/m);
-  assert.equal(statSync(join(directory, '.env')).mode & 0o777, 0o600);
+  // Windows uses ACLs rather than POSIX permission bits.
+  if (process.platform !== 'win32') assert.equal(statSync(join(directory, '.env')).mode & 0o777, 0o600);
   assert.equal(run(), fresh);
   const old = `AUTH0_DOMAIN=obsolete\r\nexport AUTH0_CLIENT_ID=obsolete\r\nAUTH0_AUDIENCE=obsolete\r\nAUTH0_REDIRECT_URI=obsolete\r\nSTARTER_API_KEY=${key}\r\nVOICE_INTEGRATION_SECRET=${secret}\r\nMAPBOX_ACCESS_TOKEN=keep-mapbox`;
   writeFileSync(join(directory, '.env'), old);
@@ -42,4 +46,12 @@ test('setup creates or migrates .env, preserves existing keys and is repeatable'
   assert.equal(run(), migrated);
   writeFileSync(join(directory, '.env'), 'STARTER_API_KEY=\n');
   assert.match(run(), /^STARTER_API_KEY=[A-Za-z0-9_-]{43}$/m);
+  // Explicitly exercise CRLF even when Git checks out the template with LF.
+  const template = readFileSync(join(directory, '.env.example'), 'utf8').replace(/\r?\n/g, '\r\n');
+  writeFileSync(join(directory, '.env.example'), template);
+  writeFileSync(join(directory, '.env'), 'STARTER_API_KEY=\r\n');
+  const windows = run();
+  assert.match(windows, /^STARTER_API_KEY=[A-Za-z0-9_-]{43}$/m);
+  assert.match(windows, /^MOBIE_API_URL=https:\/\/api-staging.mobie.at$/m);
+  assert.equal(run(), windows);
 });

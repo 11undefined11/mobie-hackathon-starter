@@ -1,6 +1,6 @@
 import { createServer as httpServer } from 'node:http';
 import { readFileSync } from 'node:fs';
-import { pathToFileURL } from 'node:url';
+import { pathToFileURL, fileURLToPath } from 'node:url';
 import { resolve } from 'node:path';
 import { timingSafeEqual, randomUUID } from 'node:crypto';
 import { createMobieClient } from './mobie.js';
@@ -8,6 +8,9 @@ import { createMapboxClient } from './mapbox.js';
 import { HttpError } from './http.js';
 import { loadConfig } from './config.js';
 import { createBackendCallLog } from './call-log.js';
+import { createSessionStore } from './session-store.js';
+import { createVoiceFlow } from './voice-flow.js';
+import { createVapiAdapter } from './vapi.js';
 
 const page = readFileSync(new URL('./index.html', import.meta.url));
 const script = readFileSync(new URL('./page.js', import.meta.url));
@@ -39,6 +42,9 @@ export function createServer(config, services = {}) {
   const mobie = services.mobie ?? createMobieClient({ baseUrl: config.baseUrl, secret: config.secret });
   const mapbox = services.mapbox ?? createMapboxClient({ token: config.mapboxToken });
   const calls = services.calls ?? createBackendCallLog({ baseUrl: config.baseUrl, secret: config.secret, apiKey: config.apiKey });
+  const store = services.store ?? createSessionStore(config.sessionDirectory ?? fileURLToPath(new URL('../.local/voice-sessions', import.meta.url)));
+  const flow = services.flow ?? createVoiceFlow({ mobie, locations: mapbox, store });
+  const vapi = createVapiAdapter({ flow, calls, allowWebCalls: config.allowWebCalls === true });
 
   const server = httpServer(async (req, res) => {
     res.setHeader('Cache-Control', 'no-store');
@@ -67,6 +73,9 @@ export function createServer(config, services = {}) {
       }
       if (req.method === 'GET' && url.pathname === '/health') return json(200, { ok: true });
       if (!equalSecret(req.headers.authorization, `Bearer ${config.apiKey}`)) throw new HttpError(401, 'Use the STARTER_API_KEY as a Bearer token for this server.');
+      if (req.method === 'POST' && url.pathname === '/vapi/tools') {
+        return json(200, await vapi.handle(await readJson(req, 262_144)));
+      }
       if (req.method === 'POST' && url.pathname === '/vapi/events') {
         const report = await readJson(req, 8_388_608);
         if (['end-of-call-report', 'status-update'].includes(report.message?.type)) await calls.recordCall(report);

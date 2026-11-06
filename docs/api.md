@@ -44,6 +44,12 @@ arbitrary backend URLs and administrative routes are inaccessible.
 
 ## Call logs and provider events
 
+`POST /vapi/tools` accepts authenticated Vapi `tool-calls` envelopes and executes
+the guarded voice flow. It requires the local starter Bearer key; caller metadata
+comes from the Vapi envelope rather than HTTP caller headers or tool arguments.
+The JSON limit is 256 KiB. See [the adapter contract](provider-adapter.md) for
+tools, persistent action keys, response strings and deployment requirements.
+
 | Method | Starter route | Behavior |
 | --- | --- | --- |
 | POST | `/vapi/events` | Accept Vapi end-of-call/status reports; normalize and push to backend; 200 after acceptance |

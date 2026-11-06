@@ -6,7 +6,7 @@ function decimalNumber(value) {
   return /^-?(?:0|[1-9]\d*)(?:\.\d+)?$/.test(trimmed) ? Number(trimmed) : NaN;
 }
 
-function location(value, name) {
+export function location(value, name) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new HttpError(400, `${name} must be a location object.`);
   const longitude = decimalNumber(value.longitude);
   const latitude = decimalNumber(value.latitude);

@@ -33,9 +33,25 @@ Proposed team convention: add a short `AGENTS.md` during milestone 1 with the sh
 
 ## Starting conditions
 
+Implementation update on 6 November 2026: R1 is repaired and locally verified.
+The server portions of R3, R4, R6 and R8 are implemented on
+`feature/server-integration`, including Vapi tool handling, isolated persistent
+call state, candidate-based search, consent summaries and durable booking retries.
+Shared contracts, tool definitions, deployment configuration and the collaborator
+handoff are in [Vapi server integration](docs/provider-adapter.md). R4, R6 and R8
+still need live provider and staging acceptance; R3 needs collaborator review.
+R9 and R10 remain joint/live verification work. The checks below describe the
+initial baseline before the setup repair.
+
+Verification after implementation: all 38 automated tests pass on Node 24 and
+the installed Node 26 runtime. The local starter key is now configured; the
+organizer secret is still missing. The container build could not be verified
+because the local Docker engine is not running. No live call or staging booking
+has been verified.
+
 Local checks on 6 November 2026 found 23 of 24 starter tests passing on Node 26.5.0. The setup test fails because the generated local key remains blank. Running `npm run setup` also leaves that key blank in this checkout. Investigate template line endings first: setup splits template entries on `\n`, which can leave `\r` on Windows. Confirm the cause before changing code. Use Node 24 LTS for the build, matching the README recommendation; CI covers Node 22 and 24.
 
-The local `.env` has been created and is ignored by Git. Both the local starter key and organizer team secret still need to be configured. Setup success output alone is not proof that startup or upstream access works.
+At the initial baseline, `.env` had been created and ignored by Git, but both the local starter key and organizer team secret were blank. Setup success output alone is not proof that startup or upstream access works.
 
 The organizer's six evaluation rides are dated 18–24 October 2026, which is past as of this plan. Ask for refreshed dates or approval to recreate equivalent routes on future dates. Do not use these past timestamps as search fixtures. Interpret trip times in `Europe/Vienna` with the correct offset for the chosen date.
 

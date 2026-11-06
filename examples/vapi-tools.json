@@ -1,0 +1,79 @@
+[
+  {
+    "type": "function",
+    "async": false,
+    "function": {
+      "name": "get_caller",
+      "description": "Check the registered passenger using trusted call metadata. No identity arguments are accepted.",
+      "parameters": { "type": "object", "properties": {}, "additionalProperties": false }
+    }
+  },
+  {
+    "type": "function",
+    "async": false,
+    "function": {
+      "name": "search_locations",
+      "description": "Resolve a German location description. Ask for town, postal code or street number if ambiguous. Read candidates to the caller and retain their IDs and attribution. Never invent coordinates.",
+      "parameters": {
+        "type": "object", "additionalProperties": false,
+        "properties": { "query": { "type": "string", "minLength": 1, "maxLength": 256 } },
+        "required": ["query"]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "async": false,
+    "function": {
+      "name": "search_rides",
+      "description": "Search after the caller confirms both resolved locations. Use candidate IDs from this call. Interpret dates in Europe/Vienna, resolve relative dates and clarify ambiguity before calling. Send a future ISO timestamp with its correct UTC offset. Empty rides means no match, never automatic booking.",
+      "parameters": {
+        "type": "object", "additionalProperties": false,
+        "properties": {
+          "departureId": { "type": "string" }, "destinationId": { "type": "string" },
+          "time": { "type": "string", "format": "date-time" },
+          "seatsRequested": { "type": "integer", "minimum": 1, "maximum": 8 },
+          "locationsConfirmed": { "type": "boolean", "enum": [true] }
+        },
+        "required": ["departureId", "destinationId", "time", "seatsRequested", "locationsConfirmed"]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "async": false,
+    "function": {
+      "name": "select_ride",
+      "description": "Select a ride.id from the latest search. Read the returned passenger pickup and destination, date/time, seats, pickup estimate and available price to the caller. Missing price means unknown. Then ask for explicit spoken agreement. Retain summaryId; changing the trip requires a fresh summary and agreement.",
+      "parameters": {
+        "type": "object", "additionalProperties": false,
+        "properties": { "rideId": { "type": "string" } }, "required": ["rideId"]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "async": false,
+    "function": {
+      "name": "book_ride",
+      "description": "Only after reading the complete current summary and hearing explicit agreement, send confirmed true and its summaryId. Refusal or uncertainty means confirmed false. Submission is pending driver approval. After timeout retry the same summaryId; never select a new ride or promise failure/success while the outcome is unknown. Do not repeat a successful booking as a new action.",
+      "parameters": {
+        "type": "object", "additionalProperties": false,
+        "properties": { "summaryId": { "type": "string" }, "confirmed": { "type": "boolean" } },
+        "required": ["summaryId", "confirmed"]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "async": false,
+    "function": {
+      "name": "get_booking_status",
+      "description": "Read the current driver's decision. Supply an actual booking ID if returned; a ride request ID is not a booking ID. Omit bookingId to list the caller's bookings across all pages. A cached submission receipt does not establish current approval.",
+      "parameters": {
+        "type": "object", "additionalProperties": false,
+        "properties": { "bookingId": { "type": "string" } }
+      }
+    }
+  }
+]
