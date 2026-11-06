@@ -1,0 +1,95 @@
+[
+  {
+    "type": "function",
+    "function": {
+      "name": "get_caller_profile",
+      "description": "Look up the registered mobie passenger for the current caller.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      }
+    },
+    "server": { "url": "https://PUBLIC-STARTER-HOST/vapi/tools" }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "find_location",
+      "description": "Find Austrian address candidates for a departure or destination; present the candidates and ask which one the caller means.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "slot": { "type": "string", "enum": ["departure", "destination"] },
+          "query": { "type": "string", "minLength": 1, "maxLength": 256 }
+        },
+        "required": ["slot", "query"],
+        "additionalProperties": false
+      }
+    },
+    "server": { "url": "https://PUBLIC-STARTER-HOST/vapi/tools" }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "confirm_location",
+      "description": "Confirm a geocoder candidate only after speaking its name and hearing a clear yes from the caller.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "slot": { "type": "string", "enum": ["departure", "destination"] },
+          "candidateId": { "type": "string", "minLength": 1 }
+        },
+        "required": ["slot", "candidateId"],
+        "additionalProperties": false
+      }
+    },
+    "server": { "url": "https://PUBLIC-STARTER-HOST/vapi/tools" }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "search_rides",
+      "description": "Search future mobie rides between the two caller-confirmed locations.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "time": { "type": "string", "description": "Future ISO-8601 date/time with Z or an explicit UTC offset; interpret the caller's time in Europe/Vienna." },
+          "seatsRequested": { "type": "integer", "minimum": 1, "maximum": 8 }
+        },
+        "required": ["time"],
+        "additionalProperties": false
+      }
+    },
+    "server": { "url": "https://PUBLIC-STARTER-HOST/vapi/tools" }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "prepare_booking",
+      "description": "Prepare the full spoken trip summary for one ride from the latest search; this does not submit a request.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "rideId": { "type": "string", "minLength": 1 }
+        },
+        "required": ["rideId"],
+        "additionalProperties": false
+      }
+    },
+    "server": { "url": "https://PUBLIC-STARTER-HOST/vapi/tools" }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "confirm_booking",
+      "description": "Submit the prepared ride request only if the conversation contains the complete spoken summary followed by the caller's clear yes.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      }
+    },
+    "server": { "url": "https://PUBLIC-STARTER-HOST/vapi/tools" }
+  }
+]

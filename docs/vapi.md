@@ -35,8 +35,10 @@ history. See [call-logs.md](call-logs.md).
 Create the following Function tools in **Tools**, then attach them to the
 assistant. For each tool, set the Server URL to
 `https://<public-starter-host>/vapi/tools`, select the same custom credential,
-and use a request timeout of at least 20 seconds. The function names and
-arguments must match this table:
+and use a request timeout of at least 20 seconds. The ready-to-use function
+schemas are in [`examples/vapi-tools.json`](../examples/vapi-tools.json); replace
+`PUBLIC-STARTER-HOST` with your HTTPS host. The function names and arguments
+must match this table:
 
 | Function name | Arguments | Purpose |
 | --- | --- | --- |
