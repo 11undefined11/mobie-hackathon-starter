@@ -30,7 +30,7 @@ test('setup creates or migrates .env, preserves existing keys and is repeatable'
   const fresh = run();
   assert.match(fresh, /^STARTER_API_KEY=[A-Za-z0-9_-]{43}$/m);
   assert.match(fresh, /^VOICE_INTEGRATION_SECRET=$/m);
-  assert.equal(statSync(join(directory, '.env')).mode & 0o777, 0o600);
+  if (process.platform !== 'win32') assert.equal(statSync(join(directory, '.env')).mode & 0o777, 0o600);
   assert.equal(run(), fresh);
   const old = `AUTH0_DOMAIN=obsolete\r\nexport AUTH0_CLIENT_ID=obsolete\r\nAUTH0_AUDIENCE=obsolete\r\nAUTH0_REDIRECT_URI=obsolete\r\nSTARTER_API_KEY=${key}\r\nVOICE_INTEGRATION_SECRET=${secret}\r\nMAPBOX_ACCESS_TOKEN=keep-mapbox`;
   writeFileSync(join(directory, '.env'), old);

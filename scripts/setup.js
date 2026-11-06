@@ -8,7 +8,7 @@ try { existing = readFileSync(path, 'utf8'); }
 catch (error) { if (error.code !== 'ENOENT') throw error; }
 // Remove obsolete identity-provider settings while preserving team/provider credentials.
 let updated = (existing || template).split(/\r?\n/).filter(line => !/^\s*(?:export\s+)?AUTH0_[A-Z_]+\s*=/.test(line)).join('\n');
-for (const line of template.split('\n')) {
+for (const line of template.split(/\r?\n/)) {
   const entry = /^([A-Z_]+)=(.*)$/.exec(line);
   if (!entry) continue;
   const [, name, defaultValue] = entry;
