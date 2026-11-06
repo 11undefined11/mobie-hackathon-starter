@@ -8,7 +8,7 @@ Auth0 remains in use for the normal mobie app and admin portal.
 
 ## Get access and update your checkout
 
-1. Pull the latest documentation with `git pull --ff-only` in your existing clone.
+1. Pull the latest starter with `git pull --ff-only` in your existing clone.
 2. Ask the organizers to create/enable your named team integration and share its
    secret privately. The secret is shown only once when created or rotated; it
    cannot be retrieved later. Organizers can revoke access or replace a secret.
@@ -22,11 +22,9 @@ Auth0 remains in use for the normal mobie app and admin portal.
 5. Verify the passenger with `GET /integrations/voice/caller` before implementing
    search and booking. A successful identity check does not submit a booking.
 
-**Rollout:** the voice routes exist on the staging branch. Per-team credential
-management is a newer backend addition; the organizers must deploy/enable it on
-that environment before issuing usable team access. This documentation update
-alone does not activate credentials or deploy the backend. Use the URL and
-credential explicitly supplied by the organizers.
+**Availability:** organizers must enable your integration on the chosen
+environment before it can be used. Pulling the starter cannot grant access or
+assign a browser test user. Use the supplied origin and secret.
 
 ## Request headers and caller identity
 
@@ -67,21 +65,21 @@ use registered test accounts for the classroom.
 
 ### Browser tests without a caller number
 
-Once the organizers deploy the per-integration **Web test user** feature, ask them
-to assign an active test passenger to your team in the admin portal. Your trusted
-server can then send `X-Mobie-Call-Type: webCall` and the normal call ID, omitting
+Ask the organizers to assign an active test passenger to your team in the admin
+portal. Your trusted server can then send `X-Mobie-Call-Type: webCall` and the normal call ID, omitting
 `X-Mobie-Caller-Phone`. The backend selects only the admin-configured test user;
 a user ID supplied by the client cannot choose an account. Without an assignment,
 this mode returns 400; a removed/deleted account returns 404.
 
 A supplied phone number takes precedence. Invalid, unknown or ambiguous numbers
-never fall back to the web test user. Until this feature is enabled, use a
+never fall back to the web test user. Without a configured web test user, use a
 registered test passenger's number explicitly in manual server-side API tests.
 
 ## First request
 
 Set the organizer-supplied values in your local shell; the variables here are
-for these curl examples, not settings already consumed by the legacy starter.
+for these direct curl examples. The starter also reads the API origin and secret
+from `.env`; its example script reads `MOBIE_CALLER_PHONE`.
 Use a real registered test number and a unique call ID:
 
 ```sh
@@ -169,7 +167,7 @@ pickup estimate and price when available; an unknown price is not free.
 Summarize pickup, destination, date/time, seats and available price information.
 Only after explicit spoken agreement, send the same searched payload with
 `"confirmed": true` to `POST /integrations/voice/rides/{rideId}/join-detailed`.
-Unlike the old Auth0 starter, the voice backend receives the confirmation flag.
+The starter forwards the confirmation flag to the voice backend.
 Success means a submitted request/pending booking; **the driver must still
 approve it**. Read `/bookings` for the current decision. There is no outbound
 webhook for later driver decisions.
@@ -207,23 +205,25 @@ turn a failed/empty search into a booking or open request without new consent.
 For support, share endpoint, HTTP status, call ID and request time. Keep secrets
 and personal account data out of public issues and logs.
 
-## Migrating the existing starter
+## Updating an existing team server
 
-The JavaScript starter in this repository still implements the **legacy Auth0
-flow**. Pulling this documentation does not migrate that code. In particular,
-`npm run setup`, the browser login page and `npm run example:search` still use
-Auth0; adding `VOICE_INTEGRATION_SECRET` to `.env` alone will not switch them.
+This repository's starter is migrated to the team voice API. Run `git pull --ff-only`
+and `npm run setup`, then set the organizer-issued `VOICE_INTEGRATION_SECRET` in
+`.env` and start it. Setup preserves your local/provider keys and removes obsolete
+identity-provider settings. It also runs automatically before start/dev/example.
 
-In your team's server, replace the upstream client authentication with the team
-secret, use `/integrations/voice/...`, forward trusted caller metadata and retain
-idempotency keys for writes. Replace the old `/me` identity check with `/caller`.
-Remove the OAuth login/refresh dependency from that integration. Keep your phone
-provider adapter, geocoder/matcher and conversation state. Your own webhook key
-(e.g. `STARTER_API_KEY`) and the mobie integration secret protect different hops;
-an Auth0 access token or Vapi API key cannot replace the integration secret.
+When adapting your own server, use `/api/caller` instead of `/api/me`, send trusted
+caller headers on every ride/account request, and retain action keys for writes.
+The upstream identity check is `/integrations/voice/caller`. The former login,
+callback, logout, session-status and generic driver-detail routes are removed.
+Restarting no longer clears a passenger session; callers are resolved per request.
+
+Your own webhook key (`STARTER_API_KEY`) and the mobie integration secret protect
+different connections. The starter adds the latter server-side; it is never
+sent to the browser or phone provider. Provider API keys cannot replace it.
 
 Optional enriched transcripts/tool logs can be uploaded with the same integration
 secret to `/integrations/voice-log/calls/...`; these uploads need no caller header
 and grant no account/ride actions. The backend attributes authenticated voice
-activity to the integration automatically. Ask organizers for the normalized
-call-log schema before adding uploads.
+activity to the integration automatically. The starter does not implement log
+uploads; ask organizers for the normalized schema before adding them.

@@ -16,7 +16,7 @@ An additional matcher for transcription errors is optional. The phone assistant 
 
 You will receive access to the mobie staging app and an organizer-approved team integration secret for the dedicated voice API. Create test accounts and rides in staging; use separate driver and passenger accounts. Drivers need the appropriate approval and a vehicle before offering rides.
 
-Your telephone service calls `/integrations/voice` with its team secret, a trusted caller number and call ID. Mobie resolves the registered passenger on every request. Browser tests without a number require an organizer-configured web test user and the corresponding backend rollout. See [voice-integration.md](voice-integration.md) for setup and examples. This replaces the shared, browser-signed-in passenger approach for the new integration. The repository's existing JavaScript starter remains a legacy Auth0 implementation until your team migrates its client.
+Your telephone service calls `/integrations/voice` with its team secret, a trusted caller number and call ID. Mobie resolves the registered passenger on every request. Browser tests without a number require an organizer-configured web test user and enabled browser-test support. See [voice-integration.md](voice-integration.md) for setup and examples. This replaces the shared, browser-signed-in passenger approach for the new integration. The starter already implements this team voice access; configure the organizer-issued secret in `.env`.
 
 ## Evaluation
 

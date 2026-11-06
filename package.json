@@ -2,14 +2,19 @@
   "name": "mobie-hackathon-starter",
   "version": "1.0.0",
   "private": true,
-  "description": "Node.js starter for the mobie Voice AI Challenge: Auth0 PKCE, REST API and Mapbox geocoding",
+  "description": "Node.js starter for the mobie Voice AI Challenge: team voice integration and Mapbox geocoding",
   "type": "module",
-  "engines": { "node": ">=22" },
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "setup": "node scripts/setup.js",
     "start": "node --env-file=.env src/server.js",
     "dev": "node --env-file=.env --watch src/server.js",
     "test": "node --test",
-    "example:search": "node --env-file=.env examples/search.js"
+    "example:search": "node --env-file=.env examples/search.js",
+    "prestart": "node scripts/setup.js",
+    "predev": "node scripts/setup.js",
+    "preexample:search": "node scripts/setup.js"
   }
 }

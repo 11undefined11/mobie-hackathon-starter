@@ -1,22 +1,22 @@
 <!doctype html>
-<html lang="en">
+<html lang="de">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>mobie Hackathon Starter</title><script src="/page.js" defer></script></head>
 <body>
 <main>
 <h1>mobie Hackathon Starter</h1>
-<p>Sign in once with your staging test passenger account. The server refreshes the access token automatically.</p>
-<p>Each server process uses one test passenger account. All phone calls through this starter use that account.</p>
-<form id="login-form">
-<label for="api-key">Team key (STARTER_API_KEY from your .env)</label><br>
-<input id="api-key" type="password" autocomplete="off" required minlength="32" size="45"><br>
-<button type="submit">Sign in with Auth0</button>
-<button type="button" id="status">Check API connection</button>
-<button type="button" id="logout">Sign out of starter</button>
+<p>Dein Server verwendet den von den Organisatoren freigegebenen Team-Zugang. Prüfe hier den Test-Mitfahrer.</p>
+<form id="connection-form">
+<p><label for="api-key">Lokaler Server-Schlüssel (STARTER_API_KEY aus .env)</label><br>
+<input id="api-key" type="password" autocomplete="off" required minlength="32" size="45"></p>
+<p><label for="caller-phone">Telefonnummer des registrierten Test-Mitfahrers (z. B. +436641234567)</label><br>
+<input id="caller-phone" type="tel" autocomplete="off" pattern="\+[1-9][0-9]{7,14}" required></p>
+<p><label><input id="web-test" type="checkbox">Browser-Test ohne Nummer (Testnutzer muss von den Organisatoren zugewiesen sein)</label></p>
+<button type="submit">API-Verbindung prüfen</button>
 </form>
 <p id="message" role="status" aria-live="polite"></p>
-<p>After signing in, enter your team key again and check the API connection. The key is not stored in the browser.</p>
-<p>See the README and docs/api.md in your repository for documentation and example requests.</p>
-<p>Tokens stay in memory. You must sign in again after restarting the server.</p>
+<p>Der Team-Zugang (VOICE_INTEGRATION_SECRET) bleibt auf dem Server. Schlüssel und Telefonnummer werden im Browser nicht gespeichert.</p>
+<p>Bei echten Anrufen muss euer Telefonie-Adapter Nummer und Call-ID aus den Provider-Daten übernehmen. Dieses Formular ist nur für manuelle Tests.</p>
+<p>Die Einrichtung, Endpoints und Buchungsbeispiele stehen in README.md und docs/api.md.</p>
 </main>
 </body>
 </html>
