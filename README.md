@@ -22,8 +22,8 @@ npm run setup
 For a new checkout:
 
 ```sh
-git clone https://github.com/maxlastglance/mobie-voice-hackathon-prototype.git
-cd mobie-voice-hackathon-prototype
+git clone https://github.com/mobie-code/mobie-hackathon-starter.git
+cd mobie-hackathon-starter
 npm run setup
 ```
 
