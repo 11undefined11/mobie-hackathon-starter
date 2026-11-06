@@ -1,3 +1,16 @@
+# mobie API for the hackathon
+
+The current hackathon integration uses the dedicated **`/integrations/voice` API**
+and an organizer-issued team secret. Start with [the voice integration guide](voice-integration.md)
+for access, caller identity, routes, payloads and idempotent writes. No Auth0 login
+or token refresh is needed for that integration.
+
+The JavaScript starter has not yet been migrated. Its existing endpoints and
+Auth0 implementation are documented below for reference.
+
+<details>
+<summary>Legacy Auth0 REST API and starter endpoints (existing starter code)</summary>
+
 # mobie REST API for the hackathon
 
 This page documents the **existing mobie REST API** first, then the starter's convenience endpoints. All examples are illustrative, not live staging records. No legacy telephone webhook or provider-specific function-call envelope is needed.
@@ -179,8 +192,10 @@ The `confirmed` boolean must reflect actual spoken consent; setting it automatic
 
 The starter only forwards its explicitly listed routes and fields, not arbitrary URLs or administrative APIs. Request bodies are limited to 16 KiB. Its own errors use `{ "error": "..." }` (400 invalid payload/consent, 401 missing key/login, 404 route, 413 size, 415 content type, 502 upstream network/JSON issue, 503 missing Mapbox token). A timeout may have an unknown write outcome.
 
-## First requests
+## Current request examples
 
-Import [postman_collection.json](postman_collection.json), set `starter_url` and your local `starter_api_key`, log in through the browser, then run the requests manually. Set `ride_time` to a real future timestamp and `ride_id` to the selected `ride.id` from your search. The booking request defaults to `confirmed: false`; change it only after consent.
+The [Postman collection](postman_collection.json) now targets the dedicated voice
+API directly. It does not call these legacy starter endpoints or use the browser
+login. Follow [voice-integration.md](voice-integration.md) for its setup.
 
-The collection is designed for the starter so tokens refresh automatically. To call mobie directly, use the backend paths and Auth0 access token described at the top of this page.
+</details>

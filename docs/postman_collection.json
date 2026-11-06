@@ -1,7 +1,7 @@
 {
   "info": {
-    "name": "mobie Hackathon Starter",
-    "description": "Log in through http://localhost:3000 first. Set your local team key below; never publish its value. These calls target YOUR STARTER, which renews Auth0 tokens and calls the normal mobie REST API. Set ride_time and coordinates to the event test rides. Run booking manually only after explicit consent.",
+    "name": "mobie Hackathon Voice Integration",
+    "description": "Direct calls to the organizer-approved voice API. No Auth0 login or local starter required. Set the organizer-supplied origin and secret, a registered test passenger phone and a unique call_id in private local values. Run manually. Booking defaults to confirmed:false; change only after consent. Retain the same idempotency_key for retries of the same write; use a new key for a new action. See docs/voice-integration.md.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "auth": {
@@ -9,18 +9,26 @@
     "bearer": [
       {
         "key": "token",
-        "value": "{{starter_api_key}}",
+        "value": "{{voice_integration_secret}}",
         "type": "string"
       }
     ]
   },
   "variable": [
     {
-      "key": "starter_url",
-      "value": "http://localhost:3000"
+      "key": "mobie_api_url",
+      "value": "https://api-staging.mobie.at"
     },
     {
-      "key": "starter_api_key",
+      "key": "voice_integration_secret",
+      "value": ""
+    },
+    {
+      "key": "caller_phone",
+      "value": ""
+    },
+    {
+      "key": "call_id",
       "value": ""
     },
     {
@@ -30,33 +38,58 @@
     {
       "key": "ride_id",
       "value": "REPLACE_WITH_SELECTED_RIDE_ID"
+    },
+    {
+      "key": "booking_id",
+      "value": "REPLACE_WITH_BOOKING_ID"
+    },
+    {
+      "key": "idempotency_key",
+      "value": ""
     }
   ],
   "item": [
     {
-      "name": "1. Verify passenger account",
+      "name": "1. Verify caller",
       "request": {
         "method": "GET",
-        "header": [],
-        "url": "{{starter_url}}/api/me",
-        "description": "Uses the staging passenger logged into this starter."
+        "header": [
+          {
+            "key": "X-Mobie-Caller-Phone",
+            "value": "{{caller_phone}}"
+          },
+          {
+            "key": "X-Mobie-Call-Id",
+            "value": "{{call_id}}"
+          }
+        ],
+        "url": "{{mobie_api_url}}/integrations/voice/caller",
+        "description": "Use the registered staging test passenger phone. Returns userId, firstName and savedPlaces; no booking is submitted."
       }
     },
     {
-      "name": "2. Resolve an address",
+      "name": "2. Search rides",
       "request": {
         "method": "POST",
         "header": [
+          {
+            "key": "X-Mobie-Caller-Phone",
+            "value": "{{caller_phone}}"
+          },
+          {
+            "key": "X-Mobie-Call-Id",
+            "value": "{{call_id}}"
+          },
           {
             "key": "Content-Type",
             "value": "application/json"
           }
         ],
-        "url": "{{starter_url}}/api/locations/search",
-        "description": "Mapbox Geocoding v6 permanent=true; uses your own token and may be billed. Returns coordinates for addresses/streets, not POIs.",
+        "url": "{{mobie_api_url}}/integrations/voice/rides/search",
+        "description": "Replace the resolved locations and future time. Response is an array; [] means no results. Select ride.id.",
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"query\": \"Stephansplatz 1, Wien\"\n}",
+          "raw": "{\n  \"departure\": {\n    \"publicName\": \"Muthgasse 24, Wien\",\n    \"addressLine\": \"Muthgasse 24, 1190 Wien\",\n    \"longitude\": 16.365,\n    \"latitude\": 48.24\n  },\n  \"destination\": {\n    \"publicName\": \"Stephansplatz, Wien\",\n    \"longitude\": 16.3738,\n    \"latitude\": 48.2082\n  },\n  \"time\": \"{{ride_time}}\",\n  \"seatsRequested\": 1\n}",
           "options": {
             "raw": {
               "language": "json"
@@ -66,20 +99,32 @@
       }
     },
     {
-      "name": "3. Search rides",
+      "name": "3. Submit booking AFTER consent",
       "request": {
         "method": "POST",
         "header": [
           {
+            "key": "X-Mobie-Caller-Phone",
+            "value": "{{caller_phone}}"
+          },
+          {
+            "key": "X-Mobie-Call-Id",
+            "value": "{{call_id}}"
+          },
+          {
             "key": "Content-Type",
             "value": "application/json"
+          },
+          {
+            "key": "Idempotency-Key",
+            "value": "{{idempotency_key}}"
           }
         ],
-        "url": "{{starter_url}}/api/rides/search",
-        "description": "Replace both locations with confirmed candidates. Response is an array; select a ride.id and set ride_id.",
+        "url": "{{mobie_api_url}}/integrations/voice/rides/{{ride_id}}/join-detailed",
+        "description": "Set confirmed:true only after spoken consent. Use the passenger searched trip and a stable unique idempotency_key. Success still needs driver approval.",
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"departure\": {\n    \"publicName\": \"Stephansplatz, Wien\",\n    \"longitude\": 16.3738,\n    \"latitude\": 48.2082\n  },\n  \"destination\": {\n    \"publicName\": \"Wien Hauptbahnhof\",\n    \"longitude\": 16.3765,\n    \"latitude\": 48.185\n  },\n  \"time\": \"{{ride_time}}\",\n  \"seatsRequested\": 1\n}",
+          "raw": "{\n  \"departure\": {\n    \"publicName\": \"Muthgasse 24, Wien\",\n    \"addressLine\": \"Muthgasse 24, 1190 Wien\",\n    \"longitude\": 16.365,\n    \"latitude\": 48.24\n  },\n  \"destination\": {\n    \"publicName\": \"Stephansplatz, Wien\",\n    \"longitude\": 16.3738,\n    \"latitude\": 48.2082\n  },\n  \"time\": \"{{ride_time}}\",\n  \"seatsRequested\": 1,\n  \"confirmed\": false\n}",
           "options": {
             "raw": {
               "language": "json"
@@ -89,53 +134,57 @@
       }
     },
     {
-      "name": "4. Submit booking AFTER consent",
+      "name": "4. Check booking status",
       "request": {
-        "method": "POST",
+        "method": "GET",
         "header": [
           {
-            "key": "Content-Type",
-            "value": "application/json"
+            "key": "X-Mobie-Caller-Phone",
+            "value": "{{caller_phone}}"
+          },
+          {
+            "key": "X-Mobie-Call-Id",
+            "value": "{{call_id}}"
           }
         ],
-        "url": "{{starter_url}}/api/rides/{{ride_id}}/join-detailed",
-        "description": "Replace locations/time with the searched passenger trip. Change confirmed to true only after explicit consent. Success means PENDING driver approval. Do not blindly retry writes.",
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"departure\": {\n    \"publicName\": \"Stephansplatz, Wien\",\n    \"longitude\": 16.3738,\n    \"latitude\": 48.2082\n  },\n  \"destination\": {\n    \"publicName\": \"Wien Hauptbahnhof\",\n    \"longitude\": 16.3765,\n    \"latitude\": 48.185\n  },\n  \"time\": \"{{ride_time}}\",\n  \"seatsRequested\": 1,\n  \"confirmed\": false\n}",
-          "options": {
-            "raw": {
-              "language": "json"
-            }
+        "url": "{{mobie_api_url}}/integrations/voice/bookings?page=0",
+        "description": "Follow nextPage until null, even if an intermediate page is empty. PENDING is not driver approval."
+      }
+    },
+    {
+      "name": "5. Check selected booking",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "X-Mobie-Caller-Phone",
+            "value": "{{caller_phone}}"
+          },
+          {
+            "key": "X-Mobie-Call-Id",
+            "value": "{{call_id}}"
           }
-        }
+        ],
+        "url": "{{mobie_api_url}}/integrations/voice/bookings/{{booking_id}}",
+        "description": "Returns the latest status of one caller-owned booking."
       }
     },
     {
-      "name": "5. Passenger details AFTER approval",
+      "name": "6. Passenger details AFTER approval",
       "request": {
         "method": "GET",
-        "header": [],
-        "url": "{{starter_url}}/api/rides/{{ride_id}}/rider-detail",
-        "description": "Only after the driver approved the booking in the staging app."
-      }
-    },
-    {
-      "name": "Login status (no tokens)",
-      "request": {
-        "method": "GET",
-        "header": [],
-        "url": "{{starter_url}}/api/status",
-        "description": "Inspect whether the starter has an active session."
-      }
-    },
-    {
-      "name": "Driver-only details",
-      "request": {
-        "method": "GET",
-        "header": [],
-        "url": "{{starter_url}}/api/rides/{{ride_id}}",
-        "description": "Only usable while logged in as this ride’s driver; not a pre-booking passenger lookup."
+        "header": [
+          {
+            "key": "X-Mobie-Caller-Phone",
+            "value": "{{caller_phone}}"
+          },
+          {
+            "key": "X-Mobie-Call-Id",
+            "value": "{{call_id}}"
+          }
+        ],
+        "url": "{{mobie_api_url}}/integrations/voice/rides/{{ride_id}}/rider-detail",
+        "description": "Requires driver approval in the staging app."
       }
     }
   ]

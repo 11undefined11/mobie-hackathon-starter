@@ -1,5 +1,18 @@
 # Authentication
 
+The current hackathon integration uses the dedicated **`/integrations/voice` API**
+and an organizer-issued team secret. Start with [the voice integration guide](voice-integration.md)
+for access, caller identity, routes, payloads and idempotent writes. No Auth0 login
+or token refresh is needed for that integration.
+
+The JavaScript starter has not yet been migrated. Its existing endpoints and
+Auth0 implementation are documented below for reference.
+
+<details>
+<summary>Legacy Auth0 authentication (existing starter code)</summary>
+
+# Authentication
+
 ## Team setup
 
 Use the supplied staging Auth0 configuration and your staging passenger account. After running `npm run setup`, fill in `.env`:
@@ -55,3 +68,5 @@ The team key gates the starter API and the start of login. Do not put it in URLs
 | API request fails after a timeout | Inspect state before retrying any booking; no automatic write retry |
 
 Official references: [PKCE](https://auth0.com/docs/get-started/authentication-and-authorization-flow/authorization-code-flow-with-pkce/add-login-using-the-authorization-code-flow-with-pkce), [refresh rotation](https://auth0.com/docs/secure/tokens/refresh-tokens/use-refresh-token-rotation).
+
+</details>

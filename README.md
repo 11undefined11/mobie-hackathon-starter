@@ -1,3 +1,39 @@
+# mobie Voice AI Hackathon
+
+Build a German-speaking phone assistant that resolves locations, finds rides and
+submits booking requests after explicit caller confirmation.
+
+## Start here: organizer-approved voice access
+
+Use the dedicated **`/integrations/voice` API** with a team integration secret
+provided by Maximilian/the organizers. Your team's server/webhook forwards the
+trusted caller number and call ID; mobie resolves the passenger account. This
+integration needs no Auth0 browser login or rotating refresh tokens.
+
+1. Update your existing clone with `git pull --ff-only`.
+2. Ask the organizers for your enabled team access, secret and API origin.
+3. Follow **[the voice integration guide](docs/voice-integration.md)** to check
+   `/caller`, search rides and submit a confirmed booking with an idempotency key.
+4. Import the updated [Postman collection](docs/postman_collection.json) for manual
+   API tests. Set secret values locally; the booking example requires consent.
+
+The guide also explains caller identity, browser tests, errors, revocation and
+how to migrate an existing team server. Per-team access and browser test accounts
+require the corresponding backend rollout; organizers confirm availability.
+
+**Code status:** this update covers documentation and request examples. The
+JavaScript starter still uses its legacy Auth0 login; it does not consume
+`VOICE_INTEGRATION_SECRET` yet. Use the direct API examples or adapt your team's
+server as described in the guide. Running `npm run setup` alone does not migrate it.
+
+- [Challenge and evaluation](docs/challenge.md)
+- [Voice API, authentication and migration](docs/voice-integration.md)
+- [Authentication reference](docs/authentication.md)
+- [API reference](docs/api.md)
+
+<details>
+<summary>Legacy starter setup and implementation reference (Auth0)</summary>
+
 # mobie Hackathon Starter
 
 Build a German-speaking phone assistant that finds rides and sends real booking requests through the **mobie staging REST API**. Use the AI phone platform of your choice and Mapbox or another geocoding or point-of-interest (POI) search service. An Austrian street-name matcher is an optional extension.
@@ -99,3 +135,5 @@ npm start
 | `examples/search.js` | First real staging search |
 
 Keep `.env`, credentials, call transcripts and personal test data out of commits. Only staging is intended; the config rejects the known production API origin. This is a single-team hackathon starter, not a production identity/booking gateway.
+
+</details>
