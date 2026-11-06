@@ -3,6 +3,7 @@ WORKDIR /app
 ENV NODE_ENV=production HOST=0.0.0.0 PORT=3000 VOICE_SESSION_DIRECTORY=/app/.local/voice-sessions
 COPY --chown=node:node package.json ./
 COPY --chown=node:node src ./src
+COPY --chown=node:node scripts/check-deployment.js ./scripts/check-deployment.js
 RUN mkdir -p /app/.local/voice-sessions && chown -R node:node /app/.local
 USER node
 EXPOSE 3000

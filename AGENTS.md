@@ -6,6 +6,7 @@ Read README.md, ROADMAP.md and docs/provider-adapter.md before changing the phon
 
 - Use Node 24 LTS. Run `npm run setup` for local environment migration.
 - Run `npm test` before handing off changes. Tests use local controlled responses, never live staging writes.
+- Run `npm run check:deployment` to validate local deployment configuration and session storage without making upstream requests.
 - No runtime dependencies are needed. Keep the existing starter routes compatible.
 
 ## Ownership

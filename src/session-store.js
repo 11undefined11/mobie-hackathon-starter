@@ -1,6 +1,6 @@
 import { mkdirSync, readFileSync, writeFileSync, renameSync, unlinkSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { randomUUID } from 'node:crypto';
+import { randomUUID, createHash } from 'node:crypto';
 import { HttpError } from './http.js';
 
 // One server process owns this directory. Atomic replacement preserves the last
@@ -10,12 +10,26 @@ export function createSessionStore(directory) {
   const queues = new Map();
   function path(id) {
     if (typeof id !== 'string' || !/^[A-Za-z0-9_-]{1,128}$/.test(id)) throw new HttpError(400, 'Invalid call ID.');
-    return join(root, `${id}.json`);
+    // Hash names keep case-sensitive call IDs distinct on Windows and avoid
+    // reserved device filenames such as CON.json.
+    return join(root, `${createHash('sha256').update(id).digest('hex')}.json`);
   }
   return {
     read(id) {
-      try { return JSON.parse(readFileSync(path(id), 'utf8')); }
-      catch (error) { if (error.code === 'ENOENT') return null; throw error; }
+      const target = path(id);
+      let raw;
+      try { raw = readFileSync(target, 'utf8'); }
+      catch (error) {
+        if (error.code !== 'ENOENT') throw error;
+        // Preserve action keys saved by the previous version. Never accept a
+        // different case variant from a case-insensitive legacy filesystem.
+        if (process.platform === 'win32' && /^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])$/i.test(id)) return null;
+        try { raw = readFileSync(join(root, `${id}.json`), 'utf8'); }
+        catch (legacyError) { if (legacyError.code === 'ENOENT') return null; throw legacyError; }
+      }
+      const state = JSON.parse(raw);
+      if (!state || state.callId !== id) throw new HttpError(503, 'Saved call identity does not match. Restore the correct state before retrying.');
+      return state;
     },
     save(state) {
       const target = path(state.callId);

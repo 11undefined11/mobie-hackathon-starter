@@ -12,6 +12,7 @@
     "start": "node --env-file=.env src/server.js",
     "dev": "node --env-file=.env --watch src/server.js",
     "test": "node --test",
+    "check:deployment": "node --env-file-if-exists=.env scripts/check-deployment.js",
     "example:search": "node --env-file=.env examples/search.js",
     "prestart": "node scripts/setup.js",
     "predev": "node scripts/setup.js",

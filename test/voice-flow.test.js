@@ -1,12 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, rmSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { createSessionStore } from '../src/session-store.js';
 import { createVoiceFlow } from '../src/voice-flow.js';
 import { HttpError } from '../src/http.js';
+import { spawnSync } from 'node:child_process';
 
 const context = { callId: 'call-a', phone: '+436641234567' };
 const location = { publicName: 'Stephansplatz', addressLine: '1010 Wien', longitude: 16.37, latitude: 48.2 };
@@ -167,4 +168,33 @@ test('a failed replacement search invalidates the previous booking summary', asy
   await assert.rejects(search(run), /Search failed/);
   await assert.rejects(run('book_ride', { summaryId: selected.summaryId, confirmed: true }), /outdated/);
   assert.equal(writes.length, 0);
+});
+
+test('abrupt process exit after a backend side effect retains the original action on recovery', async t => {
+  const { run, directory } = fixture(t);
+  const selected = await summary(run);
+  const args = { summaryId: selected.summaryId, confirmed: true };
+  const receiptPath = join(directory, 'backend-receipt.txt');
+  const source = `
+    import { writeFileSync } from 'node:fs';
+    import { createSessionStore } from ${JSON.stringify(new URL('../src/session-store.js', import.meta.url).href)};
+    import { createVoiceFlow } from ${JSON.stringify(new URL('../src/voice-flow.js', import.meta.url).href)};
+    const flow = createVoiceFlow({ store: createSessionStore(${JSON.stringify(directory)}), locations: {},
+      mobie: { joinRide: async (rideId, payload, context) => {
+        writeFileSync(${JSON.stringify(receiptPath)}, JSON.stringify({ rideId, payload, key: context.idempotencyKey }));
+        process.exit(42);
+      } } });
+    await flow.execute(${JSON.stringify(context)}, 'process-crash-tool', 'book_ride', ${JSON.stringify(args)});
+  `;
+  const child = spawnSync(process.execPath, ['--input-type=module', '-e', source], { encoding: 'utf8', timeout: 10_000 });
+  assert.equal(child.status, 42, child.stderr);
+  const receipt = JSON.parse(readFileSync(receiptPath, 'utf8'));
+  const recovered = createVoiceFlow({ store: createSessionStore(directory), locations: {}, mobie: {
+    joinRide: async (rideId, payload, c) => {
+      assert.deepEqual({ rideId, payload, key: c.idempotencyKey }, receipt);
+      return { rideRequest: { id: 'original-request', status: 'PENDING' } };
+    },
+  } });
+  const result = await recovered.execute(context, 'process-crash-tool', 'book_ride', args);
+  assert.equal(result.submission.rideRequest.id, 'original-request');
 });

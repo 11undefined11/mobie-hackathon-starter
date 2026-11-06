@@ -120,6 +120,7 @@ locations in mobie. Clarify ambiguity with callers and preserve attribution.
 
 - [Two person project roadmap and delivery milestones](ROADMAP.md)
 - [Vapi server adapter, tool definitions and collaborator handoff](docs/provider-adapter.md)
+- [Local deployment checks and booking recovery](docs/server-operations.md)
 - [Team access, caller identity, payloads and retry rules](docs/voice-integration.md)
 - [Starter and upstream API endpoints](docs/api.md)
 - [Authentication and setup](docs/authentication.md)
