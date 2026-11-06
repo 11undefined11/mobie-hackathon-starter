@@ -33,6 +33,40 @@ Proposed team convention: add a short `AGENTS.md` during milestone 1 with the sh
 
 ## Starting conditions
 
+Integration checkpoint on 6 November 2026: the collaborator branch
+`codex/windows-setup-fix` is reconciled with `feature/server-integration`.
+The public Vapi tools now follow one contract: `get_caller_profile`,
+`find_location`, `confirm_location`, `search_rides`, `prepare_booking`,
+`confirm_booking` and `get_booking_status`. Transcript-based German consent
+uses the collaborator's conversation flow; saved actions, caller binding and
+restart recovery use the shared server engine. Both test suites are retained.
+See [the current integration handoff](docs/provider-adapter.md) for the canonical
+configuration and earlier state-format handling.
+
+Current verification: all 56 tests pass on Node 24. The merged server starts on
+Node 24; the local page and health route return 200, unauthenticated API access
+returns 401 and invalid Vapi metadata returns 400. The organizer credential is
+configured privately and local configuration and storage checks pass. Upstream
+access has not been verified. Location-service access is not configured, and the
+team chose local testing before public HTTPS setup. No staging requests or
+bookings were sent during startup checks.
+
+| Task | Current checkpoint | Remaining acceptance |
+| --- | --- | --- |
+| R1 | Setup repair and Windows regression checks complete | None for local setup |
+| R2 | Organizer credential configured privately; upstream access unverified | Location access, registered passengers, future staging fixtures and approved driver |
+| R3 | Shared tool definitions, ownership and merged contract written | Joint review of the canonical Vapi configuration |
+| R4 | Combined authenticated Vapi tool handler tested locally | Real provider call through public HTTPS |
+| R5 | Candidate lookup and spoken location confirmation integrated | Actual ambiguous Austrian locations and permitted source access |
+| R6 | Future-trip validation and concurrent caller isolation tested | Find the expected seeded staging rides over a phone call |
+| R7 | German summary and conservative transcript consent integrated | German speaker review and real-call dialogue verification |
+| R8 | Confirmed actions, duplicate suppression and restart retries tested | One real stored request after consent, none after refusal |
+| R9 | Tool logging and final-report delivery covered by local tests | Verify complete history in the central staging view |
+| R10 | Combined tests, local Node 24 startup and architecture handoff complete | Live evaluation routes, HTTPS deployment and submission |
+
+The earlier entries below record the initial setup and first implementation
+checkpoints; they do not replace the current merged contract above.
+
 Implementation update on 6 November 2026: R1 is repaired and locally verified.
 The server portions of R3, R4, R6 and R8 are implemented on
 `feature/server-integration`, including Vapi tool handling, isolated persistent

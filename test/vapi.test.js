@@ -44,8 +44,10 @@ async function fixture(t, { loggingFails = false } = {}) {
     calls: { recordToolCall: async event => { logs.push(event); if (loggingFails) throw new Error('log outage'); } },
   });
   const url = await listen(t, server);
+  const messages = [];
   const envelope = (name, args, id = randomUUID()) => ({ message: {
     type: 'tool-calls', call: { id: 'vapi-call', type: 'inboundPhoneCall', customer: { number: phone } },
+    artifact: { messages: structuredClone(messages) },
     toolCallList: [{ id, type: 'function', function: { name, arguments: args } }],
   } });
   const post = async (body, headers = {}) => fetch(`${url}/vapi/tools`, {
@@ -59,19 +61,23 @@ async function fixture(t, { loggingFails = false } = {}) {
     assert.equal(typeof value.result, 'string');
     return JSON.parse(value.result);
   };
-  return { seen, logs, post, envelope, tool };
+  return { seen, logs, post, envelope, tool, messages };
 }
 
 test('authenticated Vapi envelope executes real upstream search and one confirmed booking with correlated logs', async t => {
-  const { seen, logs, tool } = await fixture(t);
-  await tool('get_caller');
-  const candidates = await tool('search_locations', JSON.stringify({ query: 'Wien' }));
-  const id = candidates.candidates[0].id;
-  await tool('search_rides', { departureId: id, destinationId: id, locationsConfirmed: true, time: '2099-01-01T12:00:00+01:00', seatsRequested: 2 });
-  const summary = await tool('select_ride', { rideId: 'ride-1' });
-  const result = await tool('book_ride', { summaryId: summary.summaryId, confirmed: true });
-  await tool('book_ride', { summaryId: summary.summaryId, confirmed: true });
-  assert.equal(result.requiresDriverApproval, true);
+  const { seen, logs, tool, messages } = await fixture(t);
+  await tool('get_caller_profile');
+  for (const slot of ['departure', 'destination']) {
+    const candidates = await tool('find_location', JSON.stringify({ slot, query: 'Wien' }));
+    messages.push({ role: 'assistant', message: 'Wien. Ist das richtig?' }, { role: 'user', message: 'Ja.' });
+    await tool('confirm_location', { slot, candidateId: candidates.candidates[0].candidateId });
+  }
+  await tool('search_rides', { time: '2099-01-01T12:00:00+01:00', seatsRequested: 2 });
+  const summary = await tool('prepare_booking', { rideId: 'ride-1' });
+  messages.push({ role: 'assistant', message: summary.summary }, { role: 'user', message: 'Ja, bitte.' });
+  const result = await tool('confirm_booking');
+  await tool('confirm_booking');
+  assert.match(result.message, /driver must still approve/);
   const writes = seen.filter(item => item.url.endsWith('/join-detailed'));
   assert.equal(writes.length, 1);
   assert.deepEqual(writes[0].body.departure, location);
@@ -79,20 +85,20 @@ test('authenticated Vapi envelope executes real upstream search and one confirme
   assert.equal(writes[0].headers['x-mobie-caller-phone'], phone);
   assert.equal(writes[0].headers['x-mobie-call-id'], 'vapi-call');
   assert.ok(writes[0].headers['idempotency-key']);
-  assert.equal(logs.length, 6);
+  assert.equal(logs.length, 9);
   assert.ok(logs.every(event => event.callId === 'vapi-call' && event.toolCallId));
 });
 
 test('Vapi authentication, metadata and tool arguments reject spoofed identity before upstream execution', async t => {
   const { post, envelope, seen } = await fixture(t);
-  assert.equal((await post(envelope('get_caller', {}), { Authorization: 'Bearer wrong' })).status, 401);
-  const missing = envelope('get_caller', {});
+  assert.equal((await post(envelope('get_caller_profile', {}), { Authorization: 'Bearer wrong' })).status, 401);
+  const missing = envelope('get_caller_profile', {});
   delete missing.message.call.customer;
   assert.equal((await post(missing)).status, 400);
-  const conflict = envelope('get_caller', {});
+  const conflict = envelope('get_caller_profile', {});
   conflict.message.customer = { number: '+436641234568' };
   assert.equal((await post(conflict)).status, 400);
-  const injected = await (await post(envelope('get_caller', { phone: '+436641234568' }))).json();
+  const injected = await (await post(envelope('get_caller_profile', { phone: '+436641234568' }))).json();
   assert.match(injected.results[0].error, /Unexpected/);
   assert.equal(injected.results[0].result, undefined);
   assert.equal(seen.length, 0);
@@ -100,18 +106,18 @@ test('Vapi authentication, metadata and tool arguments reject spoofed identity b
 
 test('Vapi errors are flat, sanitized, correlated, and do not prevent later tools in a batch', async t => {
   const { post, envelope } = await fixture(t);
-  const body = envelope('search_locations', '{invalid', 'first');
-  body.message.toolCallList.push({ id: 'second', function: { name: 'get_caller', arguments: {} } });
+  const body = envelope('find_location', '{invalid', 'first');
+  body.message.toolCallList.push({ id: 'second', function: { name: 'get_caller_profile', arguments: {} } });
   const response = await (await post(body)).json();
   assert.match(response.results[0].error, /Invalid JSON/);
   assert.equal(typeof response.results[1].result, 'string');
-  const unknown = envelope('get_caller', {});
+  const unknown = envelope('get_caller_profile', {});
   unknown.message.call.id = 'ambiguous-call';
   unknown.message.call.customer.number = '+436640000000';
   const error = (await (await post(unknown)).json()).results[0].error;
   assert.match(error, /AMBIGUOUS_CALLER/);
   assert.ok(!error.includes(secret));
-  const duplicate = envelope('get_caller', {}, 'duplicate');
+  const duplicate = envelope('get_caller_profile', {}, 'duplicate');
   duplicate.message.toolCallList.push(duplicate.message.toolCallList[0]);
   assert.equal((await post(duplicate)).status, 400);
 });

@@ -61,16 +61,16 @@ The normal app/admin login is managed separately from this starter.
 ## Connect your telephone service
 
 Expose the starter through an HTTPS tunnel or deploy it with `HOST=0.0.0.0`
-and HTTPS termination. Point your provider's HTTP integration at your public
-starter URL and an endpoint in [docs/api.md](docs/api.md). Authenticate using
-the local `STARTER_API_KEY`.
+and HTTPS termination. For Vapi, configure call reports at `/vapi/events` and
+Function tools at `/vapi/tools`; follow [the Vapi setup guide](docs/vapi.md).
+Other providers can use the starter routes in [docs/api.md](docs/api.md).
 
-Your trusted provider adapter must add `X-Mobie-Caller-Phone` and
-`X-Mobie-Call-Id` from **provider metadata**, never model tool arguments. The
-starter forwards these headers to mobie; it does not parse Vapi/Fonio envelopes
-or independently verify phone-number ownership. Keep each conversation's
-locations, selected ride and confirmed action keys in your adapter. There is no
-shared signed-in passenger or server-side fallback phone number.
+For Vapi, the built-in adapter maps authenticated tool-call metadata to
+`X-Mobie-Caller-Phone` and `X-Mobie-Call-Id`; it never accepts identity from
+model arguments. It keeps locations and ride state isolated by call ID and
+persists booking action keys for retries. Other providers need their own
+trusted metadata adapter. No shared signed-in passenger or server-side fallback
+phone number is used.
 
 For each write, add a stable `Idempotency-Key` and `confirmed: true` only after
 explicit spoken consent. Save the key before sending and reuse it unchanged for
@@ -85,8 +85,10 @@ logging is also part of the integration: the provider must send its final report
 
 For **Vapi**, set the assistant's server/event URL to
 `https://<your-starter>/vapi/events`, attach a Bearer credential with your local
-`STARTER_API_KEY`, and enable `end-of-call-report` and `status-update`. The starter
-normalizes and forwards those reports with the same mobie team secret.
+`STARTER_API_KEY`, and enable `end-of-call-report` and `status-update`. Point its
+Function tools to `https://<your-starter>/vapi/tools` using the same local
+credential. The adapter normalizes reports and translates function calls; see
+[the Vapi setup guide](docs/vapi.md).
 
 For **other providers**, send a normalized report to `PUT /api/calls/{callId}`.
 See **[central call log setup and report schema](docs/call-logs.md)** for the

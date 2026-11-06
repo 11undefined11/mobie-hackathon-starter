@@ -47,12 +47,13 @@ arbitrary backend URLs and administrative routes are inaccessible.
 `POST /vapi/tools` accepts authenticated Vapi `tool-calls` envelopes and executes
 the guarded voice flow. It requires the local starter Bearer key; caller metadata
 comes from the Vapi envelope rather than HTTP caller headers or tool arguments.
-The JSON limit is 256 KiB. See [the adapter contract](provider-adapter.md) for
+The JSON limit is 8 MiB to accommodate conversation transcripts. See [the adapter contract](provider-adapter.md) for
 tools, persistent action keys, response strings and deployment requirements.
 
 | Method | Starter route | Behavior |
 | --- | --- | --- |
 | POST | `/vapi/events` | Accept Vapi end-of-call/status reports; normalize and push to backend; 200 after acceptance |
+| POST | `/vapi/tools` | Accept Vapi function calls; map trusted call metadata and return Vapi tool results |
 | PUT | `/api/calls/{callId}` | Push a normalized call report to `/integrations/voice-log/calls/{callId}`; 204 after persistence |
 | PUT | `/api/calls/{callId}/tools/{toolId}` | Push a normalized external tool event; 204 after persistence |
 

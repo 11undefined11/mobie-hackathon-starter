@@ -36,7 +36,9 @@ export function createVapiAdapter({ flow, calls, allowWebCalls = false }) {
           if (typeof args === 'string') {
             try { args = JSON.parse(args); } catch { throw new HttpError(400, 'Invalid JSON tool arguments.'); }
           }
-          result = await flow.execute(context, tool.id, tool.function?.name, args);
+          result = await flow.execute(context, tool.id, tool.function?.name, args, {
+            messages: message.artifact?.messages ?? message.messages ?? [],
+          });
         } catch (failure) {
           error = failure instanceof HttpError ? `${failure.status}: ${failure.message}${failure.code ? ` (${failure.code})` : ''}` : '500: Voice tool failed. Retry the same booking summary after checking the server.';
         }

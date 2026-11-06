@@ -36,13 +36,14 @@ reconstructed from ride searches alone. Configure final report delivery as below
    Do not use `VOICE_INTEGRATION_SECRET` or the Vapi account API key here.
 4. Enable the `end-of-call-report` and `status-update` server messages. Make sure
    the provider includes the transcript and conversation messages in its report.
-5. Keep the same `call.id` in events and in `X-Mobie-Call-Id` on your API calls.
+5. Keep the Vapi `call.id` stable across the call report and function calls.
 
 The starter accepts Vapi's `{ "message": { "type": "end-of-call-report", ... } }`
 envelope, normalizes metadata, transcript, ordered messages and included tool
 calls, then pushes them to mobie. Status updates are interim reports. System
 prompts/assistant configuration are excluded from the stored conversation.
-This endpoint receives events; it is not a Vapi tool-call adapter.
+Vapi Function tools use the separate `/vapi/tools` endpoint; see
+[vapi.md](vapi.md) for tool names and configuration.
 
 A successful event delivery returns HTTP 200 **after** the backend accepts the
 report. Unavailable backend delivery returns 503 so the provider can retry.

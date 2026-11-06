@@ -1,50 +1,62 @@
 [
   {
-    "type": "function",
-    "async": false,
+    "type": "function", "async": false,
     "function": {
-      "name": "get_caller",
+      "name": "get_caller_profile",
       "description": "Check the registered passenger using trusted call metadata. No identity arguments are accepted.",
       "parameters": { "type": "object", "properties": {}, "additionalProperties": false }
     }
   },
   {
-    "type": "function",
-    "async": false,
+    "type": "function", "async": false,
     "function": {
-      "name": "search_locations",
-      "description": "Resolve a German location description. Ask for town, postal code or street number if ambiguous. Read candidates to the caller and retain their IDs and attribution. Never invent coordinates.",
-      "parameters": {
-        "type": "object", "additionalProperties": false,
-        "properties": { "query": { "type": "string", "minLength": 1, "maxLength": 256 } },
-        "required": ["query"]
-      }
-    }
-  },
-  {
-    "type": "function",
-    "async": false,
-    "function": {
-      "name": "search_rides",
-      "description": "Search after the caller confirms both resolved locations. Use candidate IDs from this call. Interpret dates in Europe/Vienna, resolve relative dates and clarify ambiguity before calling. Send a future ISO timestamp with its correct UTC offset. Empty rides means no match, never automatic booking.",
+      "name": "find_location",
+      "description": "Resolve departure or destination. Ask for town, postal code or street number when ambiguous. Return candidate IDs and preserve attribution. Read the chosen candidate name and address to the caller, ask if it is correct, and wait for a clear yes before confirm_location.",
       "parameters": {
         "type": "object", "additionalProperties": false,
         "properties": {
-          "departureId": { "type": "string" }, "destinationId": { "type": "string" },
-          "time": { "type": "string", "format": "date-time" },
-          "seatsRequested": { "type": "integer", "minimum": 1, "maximum": 8 },
-          "locationsConfirmed": { "type": "boolean", "enum": [true] }
+          "slot": { "type": "string", "enum": ["departure", "destination"] },
+          "query": { "type": "string", "minLength": 1, "maxLength": 256 }
         },
-        "required": ["departureId", "destinationId", "time", "seatsRequested", "locationsConfirmed"]
+        "required": ["slot", "query"]
       }
     }
   },
   {
-    "type": "function",
-    "async": false,
+    "type": "function", "async": false,
     "function": {
-      "name": "select_ride",
-      "description": "Select a ride.id from the latest search. Read the returned passenger pickup and destination, date/time, seats, pickup estimate and available price to the caller. Missing price means unknown. Then ask for explicit spoken agreement. Retain summaryId; changing the trip requires a fresh summary and agreement.",
+      "name": "confirm_location",
+      "description": "Retain a candidate only after the assistant said its name and the caller clearly agreed. The server checks the latest spoken turn in Vapi's conversation messages. A candidate ID belongs only to its slot and latest lookup.",
+      "parameters": {
+        "type": "object", "additionalProperties": false,
+        "properties": {
+          "slot": { "type": "string", "enum": ["departure", "destination"] },
+          "candidateId": { "type": "string" }
+        },
+        "required": ["slot", "candidateId"]
+      }
+    }
+  },
+  {
+    "type": "function", "async": false,
+    "function": {
+      "name": "search_rides",
+      "description": "Search using both locations previously confirmed in this call. Interpret German relative dates in Europe/Vienna and clarify ambiguity. Send a future ISO datetime with its date's correct UTC offset and 1 to 8 seats. An empty suggestions array means no match and never permits automatic booking.",
+      "parameters": {
+        "type": "object", "additionalProperties": false,
+        "properties": {
+          "time": { "type": "string", "format": "date-time" },
+          "seatsRequested": { "type": "integer", "minimum": 1, "maximum": 8 }
+        },
+        "required": ["time", "seatsRequested"]
+      }
+    }
+  },
+  {
+    "type": "function", "async": false,
+    "function": {
+      "name": "prepare_booking",
+      "description": "Select a ride.id from the latest search suggestions. Speak the returned German summary exactly, then wait for a clear yes or no. Missing price is unknown. A trip or location change requires a fresh search, summary and agreement.",
       "parameters": {
         "type": "object", "additionalProperties": false,
         "properties": { "rideId": { "type": "string" } }, "required": ["rideId"]
@@ -52,24 +64,18 @@
     }
   },
   {
-    "type": "function",
-    "async": false,
+    "type": "function", "async": false,
     "function": {
-      "name": "book_ride",
-      "description": "Only after reading the complete current summary and hearing explicit agreement, send confirmed true and its summaryId. Refusal or uncertainty means confirmed false. Submission is pending driver approval. After timeout retry the same summaryId; never select a new ride or promise failure/success while the outcome is unknown. Do not repeat a successful booking as a new action.",
-      "parameters": {
-        "type": "object", "additionalProperties": false,
-        "properties": { "summaryId": { "type": "string" }, "confirmed": { "type": "boolean" } },
-        "required": ["summaryId", "confirmed"]
-      }
+      "name": "confirm_booking",
+      "description": "Submit only after a clear spoken yes to the exact prepared summary. No means no booking; uncertainty and unrelated yes answers are rejected. Do not supply confirmed or identity arguments. After timeout retry this tool in the same call; the server reuses its saved action key. A successful request is pending driver approval. Do not prepare a new action to retry an uncertain submission.",
+      "parameters": { "type": "object", "properties": {}, "additionalProperties": false }
     }
   },
   {
-    "type": "function",
-    "async": false,
+    "type": "function", "async": false,
     "function": {
       "name": "get_booking_status",
-      "description": "Read the current driver's decision. Supply an actual booking ID if returned; a ride request ID is not a booking ID. Omit bookingId to list the caller's bookings across all pages. A cached submission receipt does not establish current approval.",
+      "description": "Read the current driver's decision. Use an actual booking ID, not a ride request ID, when available. Otherwise omit bookingId to list all caller bookings. A submission receipt does not establish current approval.",
       "parameters": {
         "type": "object", "additionalProperties": false,
         "properties": { "bookingId": { "type": "string" } }

@@ -1,92 +1,63 @@
 # Vapi server integration and team handoff
 
-The server implements R1 and the server portions of R3, R4, R6 and R8 from [the roadmap](../ROADMAP.md). Vapi is the chosen telephone provider. The collaborator owns the German conversation, location-source improvements, phone configuration and staging fixtures. Live phone acceptance remains a joint checkpoint.
+The combined server retains the collaborator's German location and booking conversation, backed by the shared engine's durable actions, caller isolation and live status reads. It implements the server portions of R3, R4, R6 and R8 in [the roadmap](../ROADMAP.md). Live phone and staging acceptance remain joint work.
 
-## Run locally
+## Run and configure Vapi
 
-Use Node 24 LTS, then run:
+Use Node 24 LTS. Run `npm run setup`, supply the organizer-issued `VOICE_INTEGRATION_SECRET` privately in `.env`, configure Mapbox or a permitted replacement location service, and run `npm start`. Use `npm test` for controlled local tests and `npm run check:deployment` for local configuration and storage checks.
 
-```sh
-npm run setup
-npm test
-npm start
-```
+Expose port 3000 over public HTTPS. Use `HOST=0.0.0.0` for container or external interface access. `/health` verifies the process only; `/api/caller` verifies a registered passenger's upstream access.
 
-Setup generates the local `STARTER_API_KEY`. Supply the organizer-issued `VOICE_INTEGRATION_SECRET` privately in `.env`. Configure an eligible `MAPBOX_ACCESS_TOKEN`, or replace the location service with one that permits storing coordinates in mobie. Starting without the team secret fails; test fixtures do not grant staging access.
+Configure Vapi as described in [the Vapi guide](vapi.md). Add the seven synchronous Function tools in [vapi-tools.json](../examples/vapi-tools.json). Each tool uses `https://YOUR_HOST/vapi/tools` and an HTTP Bearer credential containing this server's `STARTER_API_KEY`. The mobie secret stays on the server.
 
-Expose port 3000 through an HTTPS tunnel or deploy behind HTTPS termination. Set `HOST=0.0.0.0` for container or external interface access. `/health` checks the process only. Check a registered passenger through the existing connection page or `/api/caller` to verify upstream access.
+Use `https://YOUR_HOST/vapi/events` for assistant reports with the same local credential. Enable `end-of-call-report` and `status-update`, including transcript and ordered messages. Configure retries or replay for failed final reports. A failure to persist a final report returns 503. Keep call IDs, message order and tool IDs unchanged when replaying.
 
-## Vapi configuration for the collaborator
+These envelopes and response strings follow Vapi's [server events](https://docs.vapi.ai/server-url/events) and [Function tools](https://docs.vapi.ai/tools/custom-tools). Dashboard Function Test requests can contain raw arguments rather than a live tool envelope; use a real test call for identity and transcript checks.
 
-1. Create synchronous Function tools using the definitions in [vapi-tools.json](../examples/vapi-tools.json). Set each tool's server URL to `https://YOUR_HOST/vapi/tools`. Attach an HTTP Bearer credential containing this server's `STARTER_API_KEY`. Do not send the mobie secret to Vapi.
-2. Add all six tools to the assistant. Configure the German voice, transcription and conversation instructions. Execute tools one at a time where supported; search, selection and booking depend on previous results. Set the tool timeout above the starter's 15-second upstream timeout with a margin for delivery. Booking-list reads can take longer across multiple pages; prefer a known booking ID.
-3. Set the assistant's event/server URL to `https://YOUR_HOST/vapi/events` with the same local Bearer credential. Enable `end-of-call-report` and `status-update`, and include transcript and ordered messages in the final report. The tools and event URLs serve different purposes.
-4. Attach the assistant to a callable number. Use actual registered staging passenger numbers. The server reads the customer number from `message.call.customer.number` or `message.customer.number`; conflicting values are rejected. It never uses model-supplied identity.
-5. Use a real test call to verify envelopes. Vapi's dashboard Function Test panel can send raw arguments rather than the full live `tool-calls` envelope; raw arguments are intentionally rejected by this endpoint.
-6. Enable provider retries or a supported final-report replay process. A failed central report delivery returns 503. Preserve original call IDs, message ordering and tool IDs when replaying. Never replay business writes using new action identities.
+## Shared tool contract
 
-This implementation follows Vapi's [server event envelope](https://docs.vapi.ai/server-url/events) and [Function tool response format](https://docs.vapi.ai/tools/custom-tools). Tool results are serialized strings keyed by `toolCallId`; failures use a separate flat `error` string. Invalid envelopes or authentication return HTTP errors; valid tool envelopes return per-tool outcomes under HTTP 200.
-
-## Conversation contract
-
-| Tool | Arguments | Result and required next step |
+| Tool | Arguments | Result and next step |
 | --- | --- | --- |
-| `get_caller` | Empty object | Registered caller details. Resolve registration problems before proceeding. |
-| `search_locations` | `query` | Named coordinate candidates with server-generated `id` and source attribution. Ask follow-up questions and read the chosen places to the caller. |
-| `search_rides` | `departureId`, `destinationId`, `time`, `seatsRequested`, `locationsConfirmed: true` | `rides` and the retained passenger `trip`. IDs must come from location searches within this call; time must be future ISO with an offset and seats must be 1–8. |
-| `select_ride` | `rideId` from a returned `ride.id` | `summaryId`, retained `trip` and original `suggestion`. Summarize the complete trip and available pickup and price details before asking for consent. |
-| `book_ride` | Current `summaryId`, boolean `confirmed` | False sends no request and invalidates the summary. True submits the retained trip with a server-generated persisted action key. Successful submission still requires driver approval. |
-| `get_booking_status` | Optional `bookingId` | Current upstream status, or all caller bookings when omitted. A request ID is not a booking ID. Listing follows empty intermediate pages and rejects pagination cycles or more than 100 pages. |
+| `get_caller_profile` | Empty object | Registered caller details; resolve registration problems before continuing. |
+| `find_location` | `slot` as departure or destination, `query` | Candidates with slot-local `candidateId` and attribution. Clarify ambiguity, speak the chosen name and address, and wait for a clear yes. |
+| `confirm_location` | `slot`, `candidateId` | Retains the candidate after a spoken full address, or its name when no address is available, followed by a clear agreement. |
+| `search_rides` | `time`, `seatsRequested` | `suggestions` for both confirmed locations. Time must be a future ISO datetime with an explicit offset; seats must be 1–8. |
+| `prepare_booking` | `rideId` from a returned `ride.id` | German `summary` for the retained passenger trip and available formatted price. Read it exactly, then wait for explicit consent. |
+| `confirm_booking` | Empty object | Verifies spoken agreement before sending the saved trip and action key. Returns `request` and a message explaining that the driver still needs to approve it. |
+| `get_booking_status` | Optional `bookingId` | Current upstream decision, or all caller bookings if omitted. A ride request ID is not a booking ID. |
 
-All other top-level tool arguments are rejected. The model cannot choose a phone number, call ID, coordinates, upstream path or booking action key. Each session retains up to 256 tool IDs and 256 location candidates. After a limit, explain the issue and end the call; do not restart a call to retry an uncertain booking with a new identity.
+Function arguments cannot choose identity, coordinates, confirmation flags, transcript evidence, upstream paths or action keys. Unexpected arguments are rejected. Each distinct operation needs a unique provider tool ID; retries preserve the original ID and arguments. The per-call limit is 256 tool IDs and 256 location candidates.
 
-The collaborator's conversation instructions must establish explicit spoken consent. The adapter checks the current summary and boolean confirmation; it does not independently classify audio or prove that a summary was spoken. A prompt must never set `confirmed: true` because of silence, uncertainty, an earlier trip or a request merely to search.
+The location service implements `searchLocations(query)` returning `{ candidates: [{ publicName, addressLine?, longitude, latitude }], attribution }`. The collaborator can extend `src/mapbox.js` or replace the service while retaining this contract. Use a source permitting persistence in mobie and preserve attribution. The current Mapbox geocoder does not establish full POI coverage.
 
-Interpret “morgen” and other relative dates in `Europe/Vienna` using the current call date. Ask when a date or daylight-saving transition is ambiguous. Send the offset appropriate for that date. The server validates a future instant and explicit offset; it does not interpret German dates or infer a time zone from speech.
+## Transcript checks and dates
 
-For pre-booking questions, use only returned suggestion data. Summarize the passenger's confirmed pickup and destination, date and time, seats, pickup estimate if provided, and available price. Missing price is unknown. After a change to the trip, run a new search and selection, then repeat the summary and obtain fresh consent.
+The adapter reads authenticated provider evidence from `message.artifact.messages` or `message.messages`. The latest caller answer must be a conservative German affirmative, and the immediately preceding assistant turn must contain the expected location name or entire booking summary. A yes to an unrelated later question is rejected. This checks provider transcription, not raw audio; paraphrases can be rejected, so read the summary verbatim.
 
-The location service must implement `searchLocations(query)` returning `{ candidates: [{ publicName, addressLine?, longitude, latitude }], attribution }`. The collaborator can replace or extend the Mapbox implementation without changing the tool contract. IDs are assigned by the server; the assistant cannot invent coordinates or pass one call's IDs to another. Mapbox's current address geocoder does not establish full POI coverage.
+Assistant turns accept both normalized `assistant` roles and Vapi's native `bot` roles, as documented in [Vapi call messages](https://docs.vapi.ai/observability/logs/call-logs).
 
-## Booking retries and caller isolation
+Location changes invalidate the prepared trip and consent. A replacement search also invalidates the old summary even if its upstream request fails. A new trip needs a new search, summary and agreement. Declining a summary sends no booking write. The public endpoint rejects earlier engine-only functions such as `book_ride` and `select_ride`, so a model cannot bypass spoken consent with a boolean flag.
 
-The server binds each call ID to its original caller identity and serializes operations within the call. Different calls run independently. It rejects attempts to bind the same call ID to another phone or call type. Keep Vapi's globally unique call IDs unchanged in tool requests and final reports.
+Interpret relative dates in `Europe/Vienna` using the current call date. Clarify ambiguous dates and daylight-saving transitions, then send the offset for that date. The server validates a future instant and explicit offset; it does not interpret German speech. Answer pre-booking questions from returned suggestions. Missing formatted price is unknown, not free.
 
-Before sending a booking, the server saves the exact target, payload and generated idempotency key. After a timeout or transport failure, the action remains unresolved. Retry `book_ride` with the same `summaryId`; it sends the same key and payload. A new search or selection is blocked until that action is resolved. If the original response was lost, mobie can replay its original successful result.
+## Identity and recovery
 
-Completed submissions are reused even when Vapi issues a new tool ID for the same summary. Reusing a provider tool ID with different arguments is rejected. A known business rejection such as a removed ride permits a new search; auth errors, rate limits and uncertain transport failures retain the saved action for recovery.
+The server derives phone and call ID from Vapi call metadata and binds the saved call to that identity. Conflicting customer numbers, changed caller identity and invalid supplied phones are rejected. Concurrent callers retain separate locations, summaries and action keys, including case-sensitive call IDs on Windows.
 
-A repeated submission receipt is historical. Use `get_booking_status` for the driver's current decision. Refusal after a request has already been sent does not withdraw it. Withdrawal and cancellation are outside this adapter's current tool set.
+Before a booking write, the engine saves its target, exact payload and action key. After a timeout, retry `confirm_booking` in the same call; it reuses the saved action and already-recorded consent even if older transcript messages are omitted from the retry. New searches and selections are blocked while an action is unresolved. Successful submissions are reused; fresh status reads establish the driver's latest decision.
 
-## State and deployment
+Listing status follows `nextPage` across empty pages and rejects pagination cycles or more than 100 pages. Refusal after a request was sent does not withdraw it. Cancellation and withdrawal are outside this tool set.
 
-State defaults to `.local/voice-sessions`, which is ignored by Git. It contains personal trip data and action records. Use a private persistent volume via `VOICE_SESSION_DIRECTORY`; protect it with host ACLs on Windows or permissions on Linux. Retain it through restarts and releases so unresolved actions remain recoverable. Arrange a retention policy for completed sessions with the team; do not delete unresolved action records as routine cleanup.
+Keep `.local/voice-sessions`, or the configured `VOICE_SESSION_DIRECTORY`, on a private persistent volume. Run one process per volume; the file store does not provide distributed locking. Do not delete unresolved action records or put state, transcripts or credentials in Git. See [server readiness and recovery](server-operations.md).
 
-Run exactly one Node process against each state directory. This file store serializes within one process and is not a distributed lock. Multiple replicas require a transactional shared store and cross-process locking before deployment. A deployment cannot reconstruct action keys after its state volume is lost.
+Pending actions from the earlier server engine remain recoverable through `confirm_booking`. If the collaborator's older `.local/vapi-call-state.json` exists, startup stops for reviewed migration. Preserve its action keys; do not delete it just to make startup succeed. That earlier format did not bind sessions to saved caller identity, so automatic conversion would need additional identity evidence.
 
-The [Dockerfile](../Dockerfile) uses Node 24, runs as the unprivileged `node` user and starts directly from environment variables. It has no runtime package installation. Build with:
+## Deployment and live acceptance
 
-```sh
-docker build -t mobie-voice-hackathon:local .
-```
+The [Dockerfile](../Dockerfile) runs Node 24 as the unprivileged `node` user. Build with `docker build -t mobie-voice-hackathon:local .` when Docker is running. Supply `STARTER_API_KEY` and `VOICE_INTEGRATION_SECRET` as private container environment variables, publish port 3000 behind HTTPS, and mount persistent storage at `/app/.local`. The container starts directly; it does not run setup or load a `.env` file. Its health check verifies process health only.
 
-For deployment, provide the required secrets through the host's private environment configuration, publish port 3000 behind HTTPS, and mount a persistent volume at `/app/.local`. The Docker entry point does not run setup or read a `.env` file: `STARTER_API_KEY` and `VOICE_INTEGRATION_SECRET` must be set in the container environment. `.env` and local session data are excluded from the image context. The health check verifies process health, not organizer access.
+Phone-less tests require an organizer-assigned web test user and `VOICE_ALLOW_WEB_CALLS=true`. The flag defaults to false. Invalid supplied phones never fall back to that user.
 
-`VOICE_ALLOW_WEB_CALLS` defaults to false. Set it to true only after organizers assign a browser test passenger. Invalid supplied phone numbers never fall back to that passenger. Phone-less test calls use explicit Vapi `webCall` metadata.
+Live acceptance requires organizer access, registered callers, a driver with approval and a vehicle, future staging rides, a public HTTPS host and the configured Vapi assistant. Verify two callers, ambiguous locations, a declined booking, one explicitly confirmed real request, a current driver-status read and complete central call history. Then run the six organizer routes with refreshed dates and two additional challenging team routes. Local tests do not satisfy those live criteria.
 
-Existing direct `/api/...` routes remain available for manual tests and trusted integrations. They enforce their original confirmation and key rules; they do not participate in the adapter's summary state. Point model tools at `/vapi/tools` to use the new conversation guards.
-
-## Acceptance and remaining external work
-
-Automated tests cover setup with Windows line endings, trusted metadata, real local HTTP forwarding, isolated concurrent callers, candidate ownership, invalid and past trips, refusal, stale summaries, repeated consent, retry after restart, tool identity reuse, current status reads and empty-page traversal. Existing tests cover final-report retries, redaction and logging failures without changing booking outcomes.
-
-Live acceptance requires the organizer secret, configured geocoding, registered callers, an approved driver and vehicle, future staging rides, a public HTTPS host and the collaborator's Vapi assistant configuration. Complete these checks together:
-
-1. Call from each of two registered passenger numbers and verify the correct account.
-2. Resolve ambiguous locations, find an actual future seeded ride, then decline. Verify no booking write.
-3. Repeat and explicitly agree after the complete German summary. Verify one real stored request and accurate pending wording.
-4. Verify the driver decision using a fresh status read and inspect central transcript, ordered messages and tool results.
-5. Verify a controlled retry with the same saved action; do not induce duplicate live bookings through new calls.
-6. Run the six organizer routes with refreshed dates and the collaborator's two extra challenging routes.
-
-Docker build verification also requires a running Docker engine. No phone number, provider account or public deployment is created by the local implementation.
+Direct `/api/...` routes retain their original manual-test contracts. They enforce confirmation and idempotency headers without participating in the transcript state; model tools must use `/vapi/tools`.

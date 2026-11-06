@@ -14,7 +14,7 @@ Successful local readiness does not establish a reachable HTTPS address, valid u
 
 ## Recover an uncertain booking
 
-If a booking tool times out or the process stops before its response arrives, preserve the session volume. Restart with the same team integration and state directory, then retry `book_ride` using the original call metadata and `summaryId`. The adapter restores the saved key, target and exact payload.
+If a booking tool times out or the process stops before its response arrives, preserve the session volume. Restart with the same team integration and state directory, then retry `confirm_booking` using the original call metadata. The adapter restores the prepared summary, recorded consent, saved key, target and exact payload.
 
 Do not delete the session, choose a new ride or generate a new action key to bypass an unresolved booking. The upstream write may already have succeeded. Once the original action returns its result, query current booking status separately; the original submission result does not establish the driver's latest decision.
 
@@ -35,3 +35,10 @@ The local suite exercises separate callers, case-sensitive IDs, refusal, stale s
 Run `npm test` after server changes. These controlled tests do not charge the provider or write to staging. The Docker image still requires a running Docker engine for build verification; these checks do not start Docker Desktop or publish a deployment.
 
 On 6 November 2026, all 46 automated tests passed on Node 24 after these changes. The local readiness probe confirmed readable and writable session storage. Deployment configuration still fails because the organizer secret is missing; location access and live Vapi, HTTPS and report delivery remain to be verified with the team.
+
+At the later integration checkpoint on 6 November 2026, all 56 combined tests
+passed on Node 24. The organizer credential was configured privately; local
+configuration and storage checks then passed. Local Node 24 startup, the page,
+health and authentication guards were verified without staging requests.
+Location-service access and joint live acceptance remain outstanding. See
+[the current roadmap checkpoint](../ROADMAP.md#starting-conditions).

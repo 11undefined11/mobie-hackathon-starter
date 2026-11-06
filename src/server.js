@@ -9,8 +9,7 @@ import { HttpError } from './http.js';
 import { loadConfig } from './config.js';
 import { createBackendCallLog } from './call-log.js';
 import { createSessionStore } from './session-store.js';
-import { createVoiceFlow } from './voice-flow.js';
-import { createVapiAdapter } from './vapi.js';
+import { createVapiToolHandler } from './vapi-tools.js';
 
 const page = readFileSync(new URL('./index.html', import.meta.url));
 const script = readFileSync(new URL('./page.js', import.meta.url));
@@ -43,8 +42,7 @@ export function createServer(config, services = {}) {
   const mapbox = services.mapbox ?? createMapboxClient({ token: config.mapboxToken });
   const calls = services.calls ?? createBackendCallLog({ baseUrl: config.baseUrl, secret: config.secret, apiKey: config.apiKey });
   const store = services.store ?? createSessionStore(config.sessionDirectory ?? fileURLToPath(new URL('../.local/voice-sessions', import.meta.url)));
-  const flow = services.flow ?? createVoiceFlow({ mobie, locations: mapbox, store });
-  const vapi = createVapiAdapter({ flow, calls, allowWebCalls: config.allowWebCalls === true });
+  const handleVapiTools = services.vapiTools ?? createVapiToolHandler({ mobie, mapbox, calls, store, allowWebCalls: config.allowWebCalls === true });
 
   const server = httpServer(async (req, res) => {
     res.setHeader('Cache-Control', 'no-store');
@@ -74,7 +72,7 @@ export function createServer(config, services = {}) {
       if (req.method === 'GET' && url.pathname === '/health') return json(200, { ok: true });
       if (!equalSecret(req.headers.authorization, `Bearer ${config.apiKey}`)) throw new HttpError(401, 'Use the STARTER_API_KEY as a Bearer token for this server.');
       if (req.method === 'POST' && url.pathname === '/vapi/tools') {
-        return json(200, await vapi.handle(await readJson(req, 262_144)));
+        return json(200, await handleVapiTools(await readJson(req, 8_388_608)));
       }
       if (req.method === 'POST' && url.pathname === '/vapi/events') {
         const report = await readJson(req, 8_388_608);
