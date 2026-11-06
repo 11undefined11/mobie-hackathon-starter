@@ -77,6 +77,22 @@ explicit spoken consent. Save the key before sending and reuse it unchanged for
 retries of that same action. Successful booking submission still requires driver
 approval; read `/api/bookings` for the current decision.
 
+## Call logs: configure the provider event webhook
+
+The starter automatically **pushes tool logs** (arguments, results, timing and
+errors) to the mobie backend for requests with a valid call ID. Full conversation
+logging is also part of the integration: the provider must send its final report.
+
+For **Vapi**, set the assistant's server/event URL to
+`https://<your-starter>/vapi/events`, attach a Bearer credential with your local
+`STARTER_API_KEY`, and enable `end-of-call-report` and `status-update`. The starter
+normalizes and forwards those reports with the same mobie team secret.
+
+For **other providers**, send a normalized report to `PUT /api/calls/{callId}`.
+See **[central call log setup and report schema](docs/call-logs.md)** for the
+required provider setup, delivery/retry behavior and examples. The backend does
+not poll the teams for transcripts.
+
 ## First ride search
 
 Copy `examples/search.json` to `my-search.json`; set confirmed locations and a
@@ -105,6 +121,7 @@ locations in mobie. Clarify ambiguity with callers and preserve attribution.
 - [Team access, caller identity, payloads and retry rules](docs/voice-integration.md)
 - [Starter and upstream API endpoints](docs/api.md)
 - [Authentication and setup](docs/authentication.md)
+- [Call logs and provider event webhook](docs/call-logs.md)
 - [Direct voice API Postman collection](docs/postman_collection.json)
 - [Challenge and evaluation](docs/challenge.md)
 
@@ -121,7 +138,8 @@ replace a live phone/provider integration test.
 | --- | --- |
 | `src/config.js` | Team credentials and staging configuration |
 | `src/mobie.js` | Voice API, caller validation, consent and action keys |
-| `src/server.js` | Authenticated local HTTP endpoints |
+| `src/server.js` | Authenticated local HTTP endpoints and automatic tool logs |
+| `src/call-log.js` | Vapi report normalization and central call/tool log delivery |
 | `src/mapbox.js` | Optional location candidates |
 | `src/index.html`, `src/page.js` | Manual caller connection check |
 | `scripts/setup.js` | Safe configuration migration |

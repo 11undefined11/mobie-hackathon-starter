@@ -37,6 +37,11 @@ Caller/ride endpoints additionally require a trusted `X-Mobie-Call-Id` and
 test user to your integration. Invalid/unknown/ambiguous supplied phones never
 fall back to that user. No caller identity is accepted from request body fields.
 
+Call report uploads (`/vapi/events`, `/api/calls/...`) also use the local key
+without caller headers. The starter adds the team secret when pushing logs to
+`/integrations/voice-log/calls/...`; these routes grant no account actions.
+See [call-logs.md](call-logs.md) for provider setup and the report schema.
+
 Local geocoding needs only the starter key. Writes also need spoken consent
 (`confirmed: true`) and a stable `Idempotency-Key`.
 

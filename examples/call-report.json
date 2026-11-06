@@ -1,0 +1,25 @@
+{
+  "call": {
+    "id": "REPLACE_WITH_PROVIDER_CALL_ID",
+    "type": "webCall",
+    "startedAt": "2026-11-06T10:00:00Z",
+    "endedAt": "2026-11-06T10:01:00Z",
+    "transcript": "Anrufer: Hallo!\nAssistent: Wohin möchtest du fahren?"
+  },
+  "messages": [
+    {
+      "seq": 0,
+      "role": "user",
+      "text": "Hallo!",
+      "secondsFromStart": 0
+    },
+    {
+      "seq": 1,
+      "role": "assistant",
+      "text": "Wohin möchtest du fahren?",
+      "secondsFromStart": 1
+    }
+  ],
+  "toolCalls": [],
+  "reportReceived": true
+}

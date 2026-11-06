@@ -3,11 +3,13 @@ import assert from 'node:assert/strict';
 import { once } from 'node:events';
 import { createServer as httpServer } from 'node:http';
 import { createServer } from '../src/server.js';
+import { createBackendCallLog } from '../src/call-log.js';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const key = 'test-key-with-at-least-32-characters';
 const secret = 'private-upstream-team-secret-32-characters';
+const noLogs = { recordToolCall: async () => {} };
 const headers = { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json', 'X-Mobie-Caller-Phone': '+436641234567', 'X-Mobie-Call-Id': 'provider-call-1' };
 const payload = { departure: { publicName: 'Start', latitude: 48.2, longitude: 16.3 }, destination: { publicName: 'End', latitude: 48.3, longitude: 16.4 }, time: '2030-10-20T09:00:00+02:00', seatsRequested: 1 };
 
@@ -17,7 +19,8 @@ async function listen(t, server) {
   t.after(() => { server.closeAllConnections(); server.close(); });
   return `http://127.0.0.1:${server.address().port}`;
 }
-async function fixture(t) {
+async function fixture(t, { logging = false } = {}) {
+  const logs = [];
   const seen = [];
   const receipts = new Map();
   let writes = 0;
@@ -25,8 +28,15 @@ async function fixture(t) {
     let raw = '';
     for await (const chunk of req) raw += chunk;
     const body = raw ? JSON.parse(raw) : undefined;
-    seen.push({ method: req.method, url: req.url, headers: req.headers, body });
     assert.equal(req.headers.authorization, `Bearer ${secret}`);
+    if (req.url.startsWith('/integrations/voice-log/calls/')) {
+      logs.push({ method: req.method, url: req.url, headers: req.headers, body });
+      res.writeHead(204);
+      res.end();
+      upstream.emit('log');
+      return;
+    }
+    seen.push({ method: req.method, url: req.url, headers: req.headers, body });
     assert.match(req.url, /^\/integrations\/voice\//);
     res.setHeader('Content-Type', 'application/json');
     if (req.headers['x-mobie-caller-phone'] === '+436640000000') {
@@ -46,9 +56,9 @@ async function fixture(t) {
   });
   const upstreamUrl = await listen(t, upstream);
   const config = { apiKey: key, secret, baseUrl: upstreamUrl, mapboxToken: '' };
-  const server = createServer(config);
+  const server = createServer(config, logging ? {} : { calls: noLogs });
   const url = await listen(t, server);
-  return { url, server, config, seen, writes: () => writes };
+  return { url, server, config, seen, logs, upstream, writes: () => writes };
 }
 
 test('real HTTP forwards caller context with the upstream team credential, without a login or shared passenger', async t => {
@@ -94,7 +104,7 @@ test('search and confirmed booking forward a stable action key, including after 
   await book(url);
   server.closeAllConnections();
   await new Promise(resolve => server.close(resolve));
-  const restarted = await listen(t, createServer(config));
+  const restarted = await listen(t, createServer(config, { calls: noLogs }));
   await book(restarted);
   assert.equal(writes(), 1);
   assert.equal(seen.length, 3);
@@ -170,4 +180,84 @@ test('the shipped example searches the running starter with its configured manua
   assert.match(seen[0].headers['x-mobie-call-id'], /^example-/);
   assert.equal(seen[0].headers['x-mobie-caller-phone'], headers['X-Mobie-Caller-Phone']);
   assert.equal(writes(), 0);
+});
+
+test('API tools push arguments, results, timing and failures under the same team/call IDs', async t => {
+  const { url, logs, upstream } = await fixture(t, { logging: true });
+  let delivered = once(upstream, 'log', { signal: AbortSignal.timeout(3000) });
+  const search = await fetch(`${url}/api/rides/search`, {
+    method: 'POST', headers: { ...headers, 'X-Mobie-Tool-Call-Id': 'provider-tool-1' },
+    body: JSON.stringify({ ...payload, password: 'do-not-log', secret, apiKey: key }),
+  });
+  assert.equal(search.status, 200);
+  await delivered;
+  assert.equal(logs[0].url, '/integrations/voice-log/calls/provider-call-1/tools/provider-tool-1');
+  assert.equal(logs[0].method, 'PUT');
+  assert.equal(logs[0].headers.authorization, `Bearer ${secret}`);
+  assert.equal(logs[0].body.name, 'search_rides');
+  assert.deepEqual(logs[0].body.result, [{ ride: { id: 'ride-1' } }]);
+  assert.equal(logs[0].body.arguments.password, '[REDACTED]');
+  assert.equal(logs[0].body.arguments.apiKey, '[REDACTED]');
+  assert.equal(logs[0].body.arguments.secret, '[REDACTED]');
+  assert.equal(logs[0].body.ok, true);
+  assert.ok(logs[0].body.ms >= 0);
+  delivered = once(upstream, 'log', { signal: AbortSignal.timeout(3000) });
+  const failure = await fetch(`${url}/api/caller`, { headers: { ...headers, 'X-Mobie-Caller-Phone': '+436640000000' } });
+  assert.equal(failure.status, 409);
+  await delivered;
+  assert.equal(logs[1].body.ok, false);
+  assert.equal(logs[1].body.result.code, 'AMBIGUOUS_CALLER');
+});
+
+test('authenticated Vapi end reports and normalized reports push transcripts without caller lookup', async t => {
+  const { url, logs, seen } = await fixture(t, { logging: true });
+  const auth = { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' };
+  const report = { message: { type: 'end-of-call-report', call: { id: 'vapi-call-1', type: 'webCall' },
+    startedAt: '2030-01-01T10:00:00Z', endedAt: '2030-01-01T10:01:00Z',
+    artifact: { transcript: 'Hallo!' + 'x'.repeat(20_000), messages: [{ role: 'system', message: 'private prompt' }, { role: 'user', message: 'Hallo!' }] } } };
+  assert.equal((await fetch(`${url}/vapi/events`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(report) })).status, 401);
+  assert.equal(logs.length, 0);
+  for (let repeat = 0; repeat < 2; repeat++) {
+    assert.equal((await fetch(`${url}/vapi/events`, { method: 'POST', headers: auth, body: JSON.stringify(report) })).status, 200);
+  }
+  assert.equal(logs[0].url, '/integrations/voice-log/calls/vapi-call-1');
+  assert.equal(logs[1].url, logs[0].url);
+  assert.equal(logs[0].body.call.transcript, 'Hallo!' + 'x'.repeat(20_000));
+  assert.equal(logs[0].body.reportReceived, true);
+  assert.equal(logs[0].body.messages.length, 1);
+  assert.equal(logs[0].headers['x-mobie-caller-phone'], undefined);
+  const normalized = { call: { id: 'other-call-1', transcript: 'Guten Tag!' }, messages: [{ seq: 0, role: 'user', text: 'Guten Tag!' }], reportReceived: true };
+  const upload = await fetch(`${url}/api/calls/other-call-1`, { method: 'PUT', headers: auth, body: JSON.stringify(normalized) });
+  assert.equal(upload.status, 204);
+  assert.equal(logs[2].body.call.transcript, 'Guten Tag!');
+  const tool = await fetch(`${url}/api/calls/other-call-1/tools/tool-1`, { method: 'PUT', headers: auth, body: JSON.stringify({ name: 'custom_tool', result: { ok: true } }) });
+  assert.equal(tool.status, 204);
+  assert.equal(logs[3].url, '/integrations/voice-log/calls/other-call-1/tools/tool-1');
+  assert.equal(seen.length, 0);
+  assert.equal((await fetch(`${url}/api/calls/other-call-1`, { method: 'PUT', headers: auth, body: JSON.stringify({ call: { id: 'wrong-id' } }) })).status, 400);
+});
+
+test('logging failure never changes a submitted booking, while final reports return a retryable error', async t => {
+  const errors = [];
+  t.mock.method(console, 'error', message => { errors.push(message); });
+  let writes = 0;
+  const failingLogs = createBackendCallLog({ baseUrl: 'https://unused.example', secret, sleep: async () => {}, fetch: async () => new Response(null, { status: 500 }) });
+  const server = createServer({ apiKey: key }, {
+    calls: failingLogs,
+    mobie: { joinRide: async () => { writes++; return { status: 'PENDING' }; } },
+    mapbox: {},
+  });
+  const url = await listen(t, server);
+  const booking = await fetch(`${url}/api/rides/ride-1/join-detailed`, {
+    method: 'POST', headers: { ...headers, 'Idempotency-Key': 'confirmed-action' }, body: JSON.stringify({ ...payload, confirmed: true }),
+  });
+  assert.equal(booking.status, 200);
+  assert.equal((await booking.json()).status, 'PENDING');
+  assert.equal(writes, 1);
+  const final = await fetch(`${url}/vapi/events`, { method: 'POST', headers, body: JSON.stringify({ message: { type: 'end-of-call-report', call: { id: 'provider-call-1' } } }) });
+  assert.equal(final.status, 503);
+  assert.doesNotMatch(await final.text(), new RegExp(secret));
+  assert.equal(writes, 1);
+  assert.ok(errors.length > 0);
+  assert.doesNotMatch(errors.join(' '), new RegExp(secret));
 });

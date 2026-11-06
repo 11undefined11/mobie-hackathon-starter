@@ -222,8 +222,16 @@ Your own webhook key (`STARTER_API_KEY`) and the mobie integration secret protec
 different connections. The starter adds the latter server-side; it is never
 sent to the browser or phone provider. Provider API keys cannot replace it.
 
-Optional enriched transcripts/tool logs can be uploaded with the same integration
-secret to `/integrations/voice-log/calls/...`; these uploads need no caller header
-and grant no account/ride actions. The backend attributes authenticated voice
-activity to the integration automatically. The starter does not implement log
-uploads; ask organizers for the normalized schema before adding them.
+## Required call logging
+
+The starter automatically pushes tool events for API requests with a valid call
+ID using the same team integration secret. Full transcripts and ordered messages
+come from your provider's final conversation report. Configure Vapi's event URL
+as `/vapi/events` on your starter, or submit normalized reports to
+`PUT /api/calls/{callId}` for other providers. Use your local `STARTER_API_KEY`
+for these inbound requests. The starter pushes them to the separate upstream
+`/integrations/voice-log/calls/...` API, which needs no caller lookup.
+
+See [call-logs.md](call-logs.md) for exact provider setup, the normalized report
+schema, direct tool uploads and retry/delivery behavior. Basic voice activity
+alone is not a full conversation log, and the backend does not poll team servers.

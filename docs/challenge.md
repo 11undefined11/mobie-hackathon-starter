@@ -18,6 +18,14 @@ You will receive access to the mobie staging app and an organizer-approved team 
 
 Your telephone service calls `/integrations/voice` with its team secret, a trusted caller number and call ID. Mobie resolves the registered passenger on every request. Browser tests without a number require an organizer-configured web test user and enabled browser-test support. See [voice-integration.md](voice-integration.md) for setup and examples. This replaces the shared, browser-signed-in passenger approach for the new integration. The starter already implements this team voice access; configure the organizer-issued secret in `.env`.
 
+## Call history
+
+Deliver complete call history to the central mobie backend, including transcript,
+ordered messages and tool results. Starter API calls push tool logs automatically;
+configure your provider's final-report webhook as described in
+[call-logs.md](call-logs.md). For other providers, normalize reports in your
+adapter and send them to the starter. Preserve call and tool IDs on retries.
+
 ## Evaluation
 
 The following organizer-provided rides, plus at least two additional rides designed and created by your team, will be used for evaluation. Dates and times are in Austrian local time. Each listed ride offers four seats.

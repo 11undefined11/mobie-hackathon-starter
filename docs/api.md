@@ -42,6 +42,23 @@ The starter's public root page and `/page.js` provide a manual connection test.
 All `/api/...` routes require the local key. Only listed routes are proxied;
 arbitrary backend URLs and administrative routes are inaccessible.
 
+## Call logs and provider events
+
+| Method | Starter route | Behavior |
+| --- | --- | --- |
+| POST | `/vapi/events` | Accept Vapi end-of-call/status reports; normalize and push to backend; 200 after acceptance |
+| PUT | `/api/calls/{callId}` | Push a normalized call report to `/integrations/voice-log/calls/{callId}`; 204 after persistence |
+| PUT | `/api/calls/{callId}/tools/{toolId}` | Push a normalized external tool event; 204 after persistence |
+
+These routes need the local starter key and JSON, but no caller headers. Bodies
+may be up to 8 MiB. Normal API operations carrying a valid call ID already push
+their tool events automatically. Optional `X-Mobie-Tool-Call-Id` identifies the
+provider tool event; otherwise an operation UUID is generated. It is separate
+from the required idempotency key for domain writes.
+
+See [call-logs.md](call-logs.md) for provider setup, schemas, automatic redaction,
+retries and delivery limits. Transient report delivery exhaustion returns 503.
+
 ## Payload and response rules
 
 Use the [voice integration payload](voice-integration.md#search-payload) for search,
@@ -69,7 +86,7 @@ messages are hidden to avoid leaking secrets. Upstream HTTP error statuses are
 preserved. Network errors, timeouts and invalid upstream JSON return 502.
 
 Local validation uses 400 (caller/payload/consent/key/query), 401 (starter key),
-404 (route), 413 (over 16 KiB), 415 (content type), 503 (Mapbox key absent).
+404 (route), 413 (over 16 KiB for business requests / 8 MiB for reports), 415 (content type), 503 (Mapbox key absent).
 After a timeout the write may have succeeded; inspect booking status or resend
 the same confirmed action with the same idempotency key.
 

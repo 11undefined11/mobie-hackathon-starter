@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "mobie Hackathon Voice Integration",
-    "description": "Direct calls to the organizer-approved voice API. No Auth0 login or local starter required. Set the organizer-supplied origin and secret, a registered test passenger phone and a unique call_id in private local values. Run manually. Booking defaults to confirmed:false; change only after consent. Retain the same idempotency_key for retries of the same write; use a new key for a new action. See docs/voice-integration.md.",
+    "description": "Direct calls to the organizer-approved voice API. No Auth0 login or local starter required. Set the organizer-supplied origin and secret, a registered test passenger phone and a unique call_id in private local values. Run manually. Booking defaults to confirmed:false; change only after consent. Retain the same idempotency_key for retries of the same write; use a new key for a new action. See docs/voice-integration.md. The final-report request targets the local starter with its own starter_api_key. See docs/call-logs.md for automatic tool logging and provider event setup.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "auth": {
@@ -45,6 +45,14 @@
     },
     {
       "key": "idempotency_key",
+      "value": ""
+    },
+    {
+      "key": "starter_url",
+      "value": "http://localhost:3000"
+    },
+    {
+      "key": "starter_api_key",
       "value": ""
     }
   ],
@@ -185,6 +193,39 @@
         ],
         "url": "{{mobie_api_url}}/integrations/voice/rides/{{ride_id}}/rider-detail",
         "description": "Requires driver approval in the staging app."
+      }
+    },
+    {
+      "name": "Upload final call report via starter (manual test)",
+      "request": {
+        "method": "PUT",
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{starter_api_key}}",
+              "type": "string"
+            }
+          ]
+        },
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{starter_url}}/api/calls/{{call_id}}",
+        "description": "Use a unique call_id and your local starter_api_key; replace the illustrative timestamps and conversation with actual provider values. No caller headers needed. Returns 204 after backend persistence. This request creates/updates a log only, never a ride or booking. Repeat the same IDs on retry.",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"call\": {\n    \"id\": \"{{call_id}}\",\n    \"type\": \"webCall\",\n    \"startedAt\": \"2026-11-06T10:00:00Z\",\n    \"endedAt\": \"2026-11-06T10:01:00Z\",\n    \"transcript\": \"Anrufer: Hallo!\\nAssistent: Wohin möchtest du fahren?\"\n  },\n  \"messages\": [\n    {\n      \"seq\": 0,\n      \"role\": \"user\",\n      \"text\": \"Hallo!\",\n      \"secondsFromStart\": 0\n    },\n    {\n      \"seq\": 1,\n      \"role\": \"assistant\",\n      \"text\": \"Wohin möchtest du fahren?\",\n      \"secondsFromStart\": 1\n    }\n  ],\n  \"toolCalls\": [],\n  \"reportReceived\": true\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
       }
     }
   ]
