@@ -76,6 +76,9 @@ export function createServer(config, services = {}) {
       }
       if (req.method === 'POST' && url.pathname === '/vapi/events') {
         const report = await readJson(req, 8_388_608);
+        // Vapi falls back to the assistant server URL when a Function tool has
+        // no server override. Never acknowledge such a request with empty JSON.
+        if (report.message?.type === 'tool-calls') return json(200, await handleVapiTools(report));
         if (['end-of-call-report', 'status-update'].includes(report.message?.type)) await calls.recordCall(report);
         return json(200, {});
       }

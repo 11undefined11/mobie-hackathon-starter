@@ -30,6 +30,14 @@ Select the custom credential containing `STARTER_API_KEY`, enable the
 This endpoint forwards transcripts and ordered messages to mobie's call
 history. See [call-logs.md](call-logs.md).
 
+The assistant endpoint also handles `tool-calls` messages using the same guarded
+handler as `/vapi/tools`. Vapi uses the assistant's server URL when a Function
+tool has no server override. Such calls now receive proper `results` instead of
+an empty acknowledgement. Keep the explicit `/vapi/tools` URLs on the seven
+tools where configured, and ensure those tools are attached to this assistant
+under **Assistants → your assistant → Tools → Add Tool**. Creating tools in the
+workspace alone does not attach them to the assistant.
+
 ## 3. Add Function tools
 
 Create the following Function tools in **Tools**, then attach them to the

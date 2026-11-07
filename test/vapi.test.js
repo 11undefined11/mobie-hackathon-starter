@@ -50,7 +50,7 @@ async function fixture(t, { loggingFails = false } = {}) {
     artifact: { messages: structuredClone(messages) },
     toolCallList: [{ id, type: 'function', function: { name, arguments: args } }],
   } });
-  const post = async (body, headers = {}) => fetch(`${url}/vapi/tools`, {
+  const post = async (body, headers = {}, route = '/vapi/tools') => fetch(`${url}${route}`, {
     method: 'POST', headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json', ...headers }, body: JSON.stringify(body),
   });
   const tool = async (name, args = {}) => {
@@ -102,6 +102,23 @@ test('Vapi authentication, metadata and tool arguments reject spoofed identity b
   assert.match(injected.results[0].error, /Unexpected/);
   assert.equal(injected.results[0].result, undefined);
   assert.equal(seen.length, 0);
+});
+
+test('assistant event URL executes fallback tool calls instead of silently returning empty JSON', async t => {
+  const { post, envelope, seen } = await fixture(t);
+  const body = envelope('get_caller_profile', {}, 'assistant-fallback-tool');
+  const denied = await post(body, { Authorization: 'Bearer wrong' }, '/vapi/events');
+  assert.equal(denied.status, 401);
+  assert.equal(seen.length, 0);
+  const response = await post(body, {}, '/vapi/events');
+  assert.equal(response.status, 200);
+  const result = (await response.json()).results[0];
+  assert.equal(result.toolCallId, 'assistant-fallback-tool');
+  assert.equal(result.error, undefined);
+  assert.equal(JSON.parse(result.result).userId, phone);
+  assert.equal(seen.length, 1);
+  const invalid = await post({ message: { type: 'tool-calls' } }, {}, '/vapi/events');
+  assert.equal(invalid.status, 400);
 });
 
 test('Vapi errors are flat, sanitized, correlated, and do not prevent later tools in a batch', async t => {

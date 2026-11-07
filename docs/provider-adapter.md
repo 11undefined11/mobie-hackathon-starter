@@ -12,6 +12,12 @@ Configure Vapi as described in [the Vapi guide](vapi.md). Add the seven synchron
 
 Use `https://YOUR_HOST/vapi/events` for assistant reports with the same local credential. Enable `end-of-call-report` and `status-update`, including transcript and ordered messages. Configure retries or replay for failed final reports. A failure to persist a final report returns 503. Keep call IDs, message order and tool IDs unchanged when replaying.
 
+The assistant endpoint also dispatches `tool-calls` when Vapi falls back to its
+assistant-level server URL. Both endpoints enforce identical credentials,
+metadata and conversation guards. Tools must still be attached to the assistant
+and available to its model; transcript delivery alone does not prove model tool
+invocation.
+
 These envelopes and response strings follow Vapi's [server events](https://docs.vapi.ai/server-url/events) and [Function tools](https://docs.vapi.ai/tools/custom-tools). Dashboard Function Test requests can contain raw arguments rather than a live tool envelope; use a real test call for identity and transcript checks.
 
 ## Shared tool contract

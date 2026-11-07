@@ -33,6 +33,18 @@ Proposed team convention: add a short `AGENTS.md` during milestone 1 with the sh
 
 ## Starting conditions
 
+Webhook checkpoint on 7 November 2026: after the credential update, connector
+counters increased by 32 HTTP 200 responses and zero HTTP 401 responses during
+the measured interval. Transcript delivery is reported working, but no actual
+agent address-tool session is recorded. A server gap was found and repaired:
+`tool-calls` delivered to the assistant's `/vapi/events` fallback URL now execute
+the same guarded handler as `/vapi/tools` instead of returning empty JSON.
+All 60 tests pass on Node 24, and a scripted profile lookup through the restarted
+event endpoint returned 200 and recognized the backend web passenger. This
+verifies the fallback path, not the cause of the reported live stall. A fresh
+published-assistant browser call is still needed, with all tools attached to
+that assistant's model. No booking was submitted.
+
 Conversation checkpoint on 7 November 2026: the live dialogue still asks for
 identity, loses caller spelling corrections and announces results that have not
 been verified in this server's actual-call state. Saved sessions contain the
