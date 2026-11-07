@@ -3,7 +3,7 @@
     "type": "function", "async": false,
     "function": {
       "name": "get_caller_profile",
-      "description": "Check the registered passenger using trusted call metadata. No identity arguments are accepted.",
+      "description": "Call immediately to load the registered passenger from trusted metadata. In browser calls the organizer-assigned web passenger is used. Never ask for a name or phone number to perform this lookup. Do not claim a profile was found before this tool succeeds. No identity arguments are accepted.",
       "parameters": { "type": "object", "properties": {}, "additionalProperties": false }
     }
   },
@@ -11,7 +11,7 @@
     "type": "function", "async": false,
     "function": {
       "name": "find_location",
-      "description": "Resolve departure or destination. Ask for town, postal code or street number when ambiguous. Return candidate IDs and preserve attribution. Read the chosen candidate name and address to the caller, ask if it is correct, and wait for a clear yes before confirm_location.",
+      "description": "Actually resolve departure or destination using this tool; never invent an address, postal code or a successful lookup. Reuse locality and house number already supplied. Caller spelling corrections replace the earlier transcription and require a fresh lookup. Read a returned candidate's full addressLine exactly, ask if it is correct, and wait for a clear yes before confirm_location. Preserve attribution.",
       "parameters": {
         "type": "object", "additionalProperties": false,
         "properties": {
@@ -26,7 +26,7 @@
     "type": "function", "async": false,
     "function": {
       "name": "confirm_location",
-      "description": "Retain a candidate only after the assistant said its name and the caller clearly agreed. The server checks the latest spoken turn in Vapi's conversation messages. A candidate ID belongs only to its slot and latest lookup.",
+      "description": "Retain a candidate only after reading its complete addressLine and hearing a clear yes. Use only its slot and candidateId from the latest successful find_location. If the caller corrected spelling, run find_location again first. A yes that includes a correction is not confirmation. Handle any server error rather than claiming success.",
       "parameters": {
         "type": "object", "additionalProperties": false,
         "properties": {

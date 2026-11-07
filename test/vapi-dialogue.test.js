@@ -107,6 +107,38 @@ test('an ambiguous street requires the chosen full address rather than just its 
   assert.equal(accepted.results[0].error, undefined);
 });
 
+for (const correction of ['Mit einem H nach dem T.', 'Ich buchstabiere: M. U. T-H-G-A-S-S-E.']) {
+  test(`a fresh location lookup is required after caller spelling correction: ${correction}`, async t => {
+    const directory = mkdtempSync(join(tmpdir(), 'mobie-spelling-'));
+    const statePath = join(directory, 'state.json');
+    const { handler, mapbox, writes } = harness(t, statePath);
+    const queries = [];
+    mapbox.searchLocations = async query => {
+      queries.push(query);
+      return { candidates: [{ publicName: query.startsWith('Muth') ? 'Muthgasse 24' : 'Testgasse 24',
+        addressLine: query.startsWith('Muth') ? 'Muthgasse 24, 1190 Wien' : 'Testgasse 24, 1160 Wien',
+        longitude: 16.3, latitude: 48.2 }] };
+    };
+    await run(handler, 'find_location', { slot: 'departure', query: 'Testgasse 24, Wien' });
+    const messages = [...initialMessages,
+      { role: 'bot', message: 'Testgasse 24, 1160 Wien. Stimmt das?' },
+      { role: 'user', message: correction },
+      { role: 'bot', message: 'Testgasse 24, 1160 Wien. Richtig?' },
+      { role: 'user', message: 'Ja.' },
+    ];
+    const rejected = await run(handler, 'confirm_location', { slot: 'departure', candidateId: '1' }, { messages });
+    assert.match(rejected.results[0].error, /spelling correction/);
+    assert.equal(createSessionStore(`${statePath}.sessions`).read('vapi-call-1').dialogue.locations.departure.confirmed, undefined);
+    await run(handler, 'find_location', { slot: 'departure', query: 'Muthgasse 24, Wien' }, { messages });
+    messages.push({ role: 'bot', message: 'Muthgasse 24, 1190 Wien. Stimmt das?' }, { role: 'user', message: 'Ja.' });
+    const confirmed = await run(handler, 'confirm_location', { slot: 'departure', candidateId: '1' }, { messages });
+    assert.equal(confirmed.results[0].error, undefined);
+    assert.equal(JSON.parse(confirmed.results[0].result).confirmedLocation.addressLine, 'Muthgasse 24, 1190 Wien');
+    assert.deepEqual(queries, ['Testgasse 24, Wien', 'Muthgasse 24, Wien']);
+    assert.equal(writes.length, 0);
+  });
+}
+
 test('an older single-file state store blocks startup instead of losing its action keys', t => {
   const directory = mkdtempSync(join(tmpdir(), 'mobie-legacy-state-'));
   t.after(() => rmSync(directory, { recursive: true, force: true }));

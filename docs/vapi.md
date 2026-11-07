@@ -62,6 +62,14 @@ privately on the starter. This flag defaults to false.
 
 Add instructions like these to the assistant's system prompt:
 
+For the current configuration, replace the receptionist/template System Prompt
+with the complete [German system prompt](vapi-system-prompt.txt). Do not append
+it below conflicting receptionist instructions. It requires real tool results,
+uses server-side identity, preserves supplied localities and applies spelling
+corrections before repeating a location lookup. Publish the configured assistant
+and confirm that its seven attached Function tools target the current `toolsUrl`.
+The abbreviated workflow below is a reference, not a replacement for that prompt.
+
 ```text
 Speak German. Resolve departure and destination separately with find_location.
 Present ambiguous candidates and ask which one the caller means. Call
@@ -88,7 +96,23 @@ in `.local/voice-sessions`, or `VOICE_SESSION_DIRECTORY` when configured. Retry
 previous single-file `.local/vapi-call-state.json` exists, startup stops for
 reviewed migration; preserve its action keys. See [booking recovery](server-operations.md).
 
+An explicit spelling correction after a location lookup now invalidates that
+slot's prior confirmation. `confirm_location` rejects the old candidate until
+`find_location` runs again. This protects the server path; the Vapi prompt and
+tool wiring must still be applied in the dashboard before testing the live agent.
+
 ## 4. Check the connection
+
+If the assistant announces a profile or address but no corresponding successful
+tool result appears, inspect **Calls → Messages** and the tool's webhook result
+before continuing. A spoken claim alone does not establish a successful lookup.
+An HTTP 401 means the receiving server rejected authentication. In the Vapi
+Bearer credential, use only the raw `STARTER_API_KEY` value from the `.env` of the
+computer running the public server; do not include the variable name or add a
+second Bearer prefix. Keep Header Name `Authorization` and Include Bearer Prefix
+enabled. Select that credential on every Function tool and the assistant's
+Webhook Server, then publish the assistant. A key generated in another checkout
+does not authenticate against this running server.
 
 For the team's browser test, first ask the organizers to assign an active web
 test passenger to the integration. After that is verified, set

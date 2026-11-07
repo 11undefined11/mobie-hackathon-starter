@@ -33,6 +33,25 @@ Proposed team convention: add a short `AGENTS.md` during milestone 1 with the sh
 
 ## Starting conditions
 
+Conversation checkpoint on 7 November 2026: the live dialogue still asks for
+identity, loses caller spelling corrections and announces results that have not
+been verified in this server's actual-call state. Saved sessions contain the
+scripted readiness checks, not an address lookup from the reported call.
+Connector counters show many HTTP 401 responses; verify the configured Vapi
+tool URLs and the running server's local Bearer credential before retesting.
+The current credential succeeds in a controlled profile lookup. Real geocoder
+checks resolve both Muthgasse and the variant Mutgasse to Muthgasse 24, 1190 Wien;
+the claimed 1160 address was not returned by those checks.
+
+A complete replacement German prompt is in `docs/vapi-system-prompt.txt`, with
+updated tool descriptions in `examples/vapi-tools.json`. It requires real tool
+results, server-derived identity, preserved localities and fresh lookups after
+spelling corrections. The server now rejects confirmation of an old candidate
+after an explicit spelling correction until a new lookup runs. All 59 tests
+pass on Node 24. These are prepared repository changes; the dashboard prompt,
+published assistant version and credentials still need to be checked and the
+real conversation repeated. No live booking acceptance is claimed.
+
 Browser checkpoint on 7 November 2026: the team chose Vapi browser calls.
 Organizer-assigned web passenger access was verified, and
 `VOICE_ALLOW_WEB_CALLS=true` was enabled only in the ignored local environment.

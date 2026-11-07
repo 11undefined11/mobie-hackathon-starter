@@ -36,6 +36,10 @@ function verifySpokenConfirmation(messages, after, expectedPhrase) {
   const expected = normalize(expectedPhrase);
   return expected.length > 0 && normalize(assistant).includes(expected);
 }
+function hasSpellingCorrection(messages, after) {
+  return messages.slice(after).some(message => message?.role === 'user' &&
+    /\b(?:ich )?buchstabiere\b|\bbuchstabiert\b|\b[a-z] (?:nach|hinter) (?:dem )?[a-z]\b|\b[a-z](?: [a-z]){3,}\b/u.test(normalize(textOf(message))));
+}
 function priceText(suggestion) {
   const ride = suggestion?.ride ?? {};
   const value = suggestion?.priceText ?? suggestion?.priceFormatted ?? suggestion?.priceDisplay ?? ride.priceText ?? ride.priceFormatted ?? ride.priceDisplay;
@@ -101,6 +105,12 @@ export function createVapiToolHandler({ mobie, mapbox, calls, store, statePath, 
           const index = typeof args.candidateId === 'string' && /^[1-9]\d*$/.test(args.candidateId) ? Number(args.candidateId) - 1 : -1;
           const candidate = slot?.candidates[index];
           if (!candidate) throw new HttpError(400, 'Choose a candidate returned by find_location.');
+          if (hasSpellingCorrection(messages, slot.foundAfter)) {
+            clearTrip(state, dialogue);
+            delete slot.confirmed;
+            store.save(state);
+            throw new HttpError(409, 'The caller supplied a spelling correction after this lookup. Call find_location again with the corrected spelling before confirming an address.');
+          }
           if (!verifySpokenConfirmation(messages, slot.foundAfter, candidate.addressLine || candidate.publicName)) throw new HttpError(400, 'Speak the selected location including its full address when available, then wait for a clear caller confirmation.');
           clearTrip(state, dialogue);
           slot.confirmed = candidate;
