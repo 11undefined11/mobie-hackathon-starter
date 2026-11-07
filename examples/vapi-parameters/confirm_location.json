@@ -1,0 +1,20 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "slot": {
+      "type": "string",
+      "enum": [
+        "departure",
+        "destination"
+      ]
+    },
+    "candidateId": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "slot",
+    "candidateId"
+  ]
+}

@@ -33,6 +33,16 @@ Proposed team convention: add a short `AGENTS.md` during milestone 1 with the sh
 
 ## Starting conditions
 
+Tool-schema checkpoint on 7 November 2026: an actual address-tool session
+contained five lookups without query and two confirmations without candidateId.
+The complete lookup returned Muthgasse 24, 1190 Wien correctly. The team confirmed
+both dashboard tools had empty properties and required arrays. Dashboard repair
+is required: paste the matching schemas from examples/vapi-parameters into all
+seven tools, save and publish. The server now names missing arguments explicitly,
+returns an exact address confirmationPrompt and recognizes additional clear
+German affirmatives. All 62 tests pass on Node 24. Repeat the microphone address test after publishing; no
+live booking acceptance is claimed.
+
 Webhook checkpoint on 7 November 2026: after the credential update, connector
 counters increased by 32 HTTP 200 responses and zero HTTP 401 responses during
 the measured interval. Transcript delivery is reported working, but no actual

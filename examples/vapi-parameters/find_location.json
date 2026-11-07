@@ -1,0 +1,22 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "slot": {
+      "type": "string",
+      "enum": [
+        "departure",
+        "destination"
+      ]
+    },
+    "query": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    }
+  },
+  "required": [
+    "slot",
+    "query"
+  ]
+}

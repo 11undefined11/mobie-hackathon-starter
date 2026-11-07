@@ -12,6 +12,11 @@ const fields = {
   confirm_location: ['slot', 'candidateId'], search_rides: ['time', 'seatsRequested'],
   prepare_booking: ['rideId'], confirm_booking: [], get_booking_status: ['bookingId'],
 };
+const required = {
+  get_caller_profile: [], find_location: ['slot', 'query'],
+  confirm_location: ['slot', 'candidateId'], search_rides: ['time', 'seatsRequested'],
+  prepare_booking: ['rideId'], confirm_booking: [], get_booking_status: [],
+};
 function textOf(message) {
   const value = message?.message ?? message?.content ?? message?.text;
   if (typeof value === 'string') return value;
@@ -22,7 +27,7 @@ function normalize(value) {
   return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('de-AT')
     .replace(/[^\p{L}\p{N}]+/gu, ' ').trim().replace(/\s+/g, ' ');
 }
-const affirmative = /^(?:ja|ja bitte|ja bitte buchen|ja bitte anfragen|bitte buchen|bitte anfragen|bitte senden|genau|das passt|einverstanden|ich bin einverstanden|ich bestaetige|ich bestatige|stimmt|klingt gut|mach das)$/;
+const affirmative = /^(?:ja|ja ja|ja ja bestimmt|ja bestimmt|ja genau|ja richtig|ja das stimmt|ja das ist richtig|ja bitte|ja bitte buchen|ja bitte anfragen|bitte buchen|bitte anfragen|bitte senden|genau|das passt|einverstanden|ich bin einverstanden|ich bestaetige|ich bestatige|stimmt|klingt gut|mach das)$/;
 function verifySpokenConfirmation(messages, after, expectedPhrase) {
   if (!Array.isArray(messages) || messages.length <= after) return false;
   const later = messages.slice(after);
@@ -87,6 +92,12 @@ export function createVapiToolHandler({ mobie, mapbox, calls, store, statePath, 
         if (!previous && Object.keys(dialogue.receipts).length >= 256) throw new HttpError(429, 'Call tool limit reached.');
         dialogue.receipts[receiptKey] = { input };
         store.save(state);
+        const missing = required[name].filter(key => args[key] === undefined || args[key] === null || (typeof args[key] === 'string' && !args[key].trim()));
+        if (missing.length) {
+          dialogue.receipts[receiptKey].lastError = { code: 'TOOL_ARGUMENTS_MISSING', missing };
+          store.save(state);
+          throw new HttpError(400, `${name} is missing required tool arguments: ${missing.join(', ')}. Resend this tool with all required fields from the conversation or latest tool result. Do not ask the caller to repeat information already provided.`, 'TOOL_ARGUMENTS_MISSING');
+        }
         const run = (mapped, value) => engine.execute(context, toolId, mapped, value);
         let result;
         if (name === 'get_caller_profile') result = await run('get_caller', {});
@@ -97,7 +108,12 @@ export function createVapiToolHandler({ mobie, mapbox, calls, store, statePath, 
           store.save(state);
           const found = await run('search_locations', { query: args.query });
           dialogue.locations[args.slot] = { candidates: found.candidates, foundAfter: messages.length };
-          result = { ...found, candidates: found.candidates.map((candidate, index) => ({ ...candidate, candidateId: String(index + 1) })) };
+          result = { ...found,
+            instruction: 'Choose only candidates consistent with the supplied locality. Read the selected confirmationPrompt verbatim once, then call confirm_location with this slot and its candidateId after a clear yes. Do not repeat questions about city or house number already supplied.',
+            candidates: found.candidates.map((candidate, index) => ({ ...candidate, candidateId: String(index + 1),
+              confirmationPrompt: `Ist ${candidate.addressLine || candidate.publicName} dein gewünschter ${args.slot === 'departure' ? 'Startort' : 'Zielort'}?`,
+            })),
+          };
         }
         if (name === 'confirm_location') {
           if (!['departure', 'destination'].includes(args.slot)) throw new HttpError(400, 'slot must be departure or destination.');

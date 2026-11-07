@@ -60,6 +60,21 @@ Use the seven definitions in [examples/vapi-tools.json](../examples/vapi-tools.j
 as the shared contract. Distinct operations require unique provider tool IDs;
 retries preserve the original ID and arguments.
 
+For dashboard copy/paste, open the matching file in
+[examples/vapi-parameters](../examples/vapi-parameters) and paste its entire
+contents into that tool's **Parameters** editor. These files contain only the
+parameter schema, without the outer Function wrapper. Save each tool, check
+all seven attached tools, and publish the assistant. In particular,
+`find_location` requires `slot` and `query`; `confirm_location` requires `slot`
+and `candidateId`. Empty `properties: {}` and `required: []` are incorrect for
+these tools and prevent the model from supplying the needed arguments.
+
+A green completed tool card does not establish application success. Inspect
+the returned result or error. Missing arguments now name the missing fields;
+the model should reuse information already given instead of asking for it again.
+Location results include a `confirmationPrompt` containing the unchanged full
+address for the assistant to read once before confirmation.
+
 Use an object JSON schema for each function's **Parameters** and define only the
 arguments listed above. Do not add caller phone, call ID, `confirmed`, or an
 idempotency key to the model-visible schema. The adapter takes call ID and phone

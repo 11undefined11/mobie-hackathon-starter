@@ -1,0 +1,19 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "time": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "seatsRequested": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 8
+    }
+  },
+  "required": [
+    "time",
+    "seatsRequested"
+  ]
+}

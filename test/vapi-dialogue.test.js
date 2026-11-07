@@ -67,6 +67,41 @@ async function preparedCall(handler, { callId = 'vapi-call-1', phone = caller, a
   return { callId, phone, messages, summary: JSON.parse(prepared.results[0].result).summary };
 }
 
+test('missing model arguments name the required fields without contacting the location service', async t => {
+  const directory = mkdtempSync(join(tmpdir(), 'mobie-missing-args-'));
+  const statePath = join(directory, 'state.json');
+  const { handler, mapbox, writes } = harness(t, statePath);
+  let lookups = 0;
+  mapbox.searchLocations = async () => { lookups++; throw new Error('Must not run'); };
+  for (const [name, args, missing] of [
+    ['find_location', {}, ['slot', 'query']],
+    ['find_location', { slot: 'departure' }, ['query']],
+    ['confirm_location', { slot: 'departure' }, ['candidateId']],
+  ]) {
+    const result = await run(handler, name, args);
+    for (const field of missing) assert.ok(result.results[0].error.includes(field));
+    assert.match(result.results[0].error, /Do not ask the caller to repeat/);
+  }
+  const receipts = Object.values(createSessionStore(`${statePath}.sessions`).read('vapi-call-1').dialogue.receipts);
+  assert.deepEqual(receipts.map(receipt => receipt.lastError.missing), [['slot', 'query'], ['query'], ['candidateId']]);
+  assert.equal(lookups, 0);
+  assert.equal(writes.length, 0);
+});
+
+test('returned address readback and natural clear yes work without another confirmation loop', async t => {
+  const directory = mkdtempSync(join(tmpdir(), 'mobie-natural-yes-'));
+  const { handler } = harness(t, join(directory, 'state.json'));
+  for (const [index, answer] of ['Ja, ja, bestimmt.', 'Ja, genau.'].entries()) {
+    const callId = `natural-yes-${index}`;
+    const found = await run(handler, 'find_location', { slot: 'departure', query: 'Muthgasse 24, 1190 Wien' }, { callId });
+    const candidate = JSON.parse(found.results[0].result).candidates[0];
+    assert.equal(candidate.confirmationPrompt, 'Ist Muthgasse 24, 1190 Wien dein gewünschter Startort?');
+    const messages = [...initialMessages, { role: 'bot', message: candidate.confirmationPrompt }, { role: 'user', message: answer }];
+    const confirmed = await run(handler, 'confirm_location', { slot: 'departure', candidateId: candidate.candidateId }, { callId, messages });
+    assert.equal(confirmed.results[0].error, undefined);
+  }
+});
+
 test('an unrelated yes after an older summary never authorizes a booking', async t => {
   const directory = mkdtempSync(join(tmpdir(), 'mobie-consent-'));
   const { handler, writes } = harness(t, join(directory, 'state.json'));
@@ -307,7 +342,7 @@ test('Vapi booking timeout retries reuse the persisted key and exact payload aft
   assert.ok(failed.results[0].error);
   assert.equal(calls.length, 1);
 
-  const blockedChange = await run(handler, 'search_rides', { time: '2030-10-21T09:00:00+02:00' }, { callId: 'retry-call', messages: approvedMessages });
+  const blockedChange = await run(handler, 'search_rides', { time: '2030-10-21T09:00:00+02:00', seatsRequested: 1 }, { callId: 'retry-call', messages: approvedMessages });
   assert.match(blockedChange.results[0].error, /unresolved/);
 
   handler = createVapiToolHandler({ mobie, mapbox, calls: { recordToolCall: async () => {} }, statePath });
