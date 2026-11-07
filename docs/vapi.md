@@ -90,6 +90,28 @@ reviewed migration; preserve its action keys. See [booking recovery](server-oper
 
 ## 4. Check the connection
 
+For the team's browser test, first ask the organizers to assign an active web
+test passenger to the integration. After that is verified, set
+`VOICE_ALLOW_WEB_CALLS=true` privately in `.env` and restart the server. In Vapi,
+open **Assistants**, select the configured assistant, select **Talk**, and allow
+microphone access. See [Vapi's web-call test instructions](https://docs.vapi.ai/assistants/quickstart).
+These calls use the organizer-assigned web test passenger, rather than the
+manual `MOBIE_CALLER_PHONE` value. Keep provider call type `webCall`; do not insert
+an arbitrary phone number into tool arguments.
+
+If using a temporary Cloudflare connection, use the current URLs saved in the
+ignored `.local/https-connection.json` file. Set every Function tool's server URL
+to its `toolsUrl` and the assistant reports URL to its `eventsUrl`. Use this
+server's `STARTER_API_KEY` credential for both. Keep the server and connector
+running; [Quick Tunnel URLs are temporary](https://developers.cloudflare.com/tunnel/get-started/quick-tunnels/).
+
+Start with a refusal after the assistant reads the complete trip summary. Check
+that no request was submitted. Only a later explicit yes to a current complete
+summary should create a real request pending driver approval. Finish the call
+and check that central history includes its transcript and tool results.
+
+For a separate telephone test:
+
 1. Use Vapi's Function tool **Test** panel to check the endpoint and credential.
    That test does not include in-call `message.call` metadata; use a real Vapi
    test call to verify caller resolution.

@@ -33,6 +33,19 @@ Proposed team convention: add a short `AGENTS.md` during milestone 1 with the sh
 
 ## Starting conditions
 
+Browser checkpoint on 7 November 2026: the team chose Vapi browser calls.
+Organizer-assigned web passenger access was verified, and
+`VOICE_ALLOW_WEB_CALLS=true` was enabled only in the ignored local environment.
+A temporary Cloudflare HTTPS connection was started and checked: public health
+returns 200, unauthenticated API access returns 401, a phone-less Vapi-shaped
+caller lookup succeeds, and the web passenger's search finds one matching ride
+for 7 November at 19:20 Vienna time from Muthgasse 24 to Stephansplatz.
+No booking was submitted. Current temporary URLs are in
+`.local/https-connection.json`; keep both the local server and connector running.
+The next joint step is entering those URLs and the starter credential in Vapi,
+then an actual microphone conversation, refusal test and complete call-history
+verification. Telephone-specific acceptance has not been exercised.
+
 Integration checkpoint on 6 November 2026: the collaborator branch
 `codex/windows-setup-fix` is reconciled with `feature/server-integration`.
 The public Vapi tools now follow one contract: `get_caller_profile`,
@@ -65,13 +78,13 @@ provider, geocoder or staging acceptance. See [local rehearsal and setup](docs/l
 | R1 | Setup repair and Windows regression checks complete | None for local setup |
 | R2 | Organizer credential, registered passenger lookup and location access verified | Known future staging fixtures, second passenger and approved driver |
 | R3 | Shared tool definitions, ownership and merged contract written | Joint review of the canonical Vapi configuration |
-| R4 | Combined authenticated Vapi tool handler tested locally | Real provider call through public HTTPS |
+| R4 | Public HTTPS, authentication and phone-less Vapi-shaped requests verified | Actual Vapi browser conversation through the configured tools |
 | R5 | Real Vienna address lookups verified; spoken location guards integrated | Wider Austrian ambiguity and POI cases, then real phone confirmation |
 | R6 | Real staging search returned 200 with no matches; caller isolation tested locally | Find a known future seeded ride, then repeat over a phone call |
-| R7 | German summary and conservative transcript consent integrated | German speaker review and real-call dialogue verification |
+| R7 | German summary and conservative transcript consent integrated | German speaker review during the real browser conversation |
 | R8 | Confirmed actions, duplicate suppression and restart retries tested | One real stored request after consent, none after refusal |
 | R9 | Tool logging and final reports verified together in the local rehearsal | Verify complete history in the central staging view |
-| R10 | Combined tests, local rehearsal, real address lookup and staging search verified | Positive-match staging fixtures, live evaluation routes, HTTPS deployment and submission |
+| R10 | Tests, local rehearsal, one positive staging match and temporary HTTPS verified | Actual browser dialogue, remaining evaluation routes and submission |
 
 The earlier entries below record the initial setup and first implementation
 checkpoints; they do not replace the current merged contract above.
